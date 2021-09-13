@@ -1,22 +1,21 @@
 #[allow(dead_code)]
+#[allow(unused_variables)]
 mod instance;
 use dotenv::dotenv;
-use instance::model::{ Instance };
+use instance::model::Instance;
+use std::path::PathBuf;
 
+#[allow(unused_variables)]
 fn main() {
     dotenv().ok();
-    let ins = Instance {
-        box_id: 1,
-        bin_path: String::from("/hello/world"),
-        log_file: String::from("/log/file"),
-        time_limit: 1.0,
-        memory_limit: 512000,
-        input_path: String::from("/path/to/in"),
-        output_path: String::from("/path/to/out"),
-        runner_path: String::from("/path/to/runner")
-    };
-    let args = ins.get_arguments().unwrap();
-    for st in args.iter() {
-        println!("{}", st);
-    }
+    let ins = Instance::new(
+        1,
+        PathBuf::from("/hello/world"),
+        PathBuf::from("/log/file"),
+        1.0,
+        512000,
+        PathBuf::from("/path/to/in"),
+        PathBuf::from("/path/to/out"),
+        PathBuf::from("/path/to/runner"),
+    );
 }
