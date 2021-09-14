@@ -44,43 +44,33 @@ fn get_env(name: &'static str) -> Result<String, InstanceError> {
 
 impl Instance {
     fn get_arguments(&self) -> Result<Vec<String>, InstanceError> {
-        let mut args: Vec<String> = Vec::new();
-        args.push(s!("--cg"));
-        args.push(s!("--cg-timing"));
-        args.push(s!("--processes=128"));
+        let mut args: Vec<String> = vec![
+            s!("-b"),
+            self.box_id.to_string(),
+            s!("-M"),
+            self.log_file.to_str().unwrap().to_string(),
+            s!("-t"),
+            self.time_limit.to_string(),
+            s!("-w"),
+            (self.time_limit + 5.0).to_string(),
+            s!("-x"),
+            (self.time_limit + 1.0).to_string(),
+            s!("-i"),
+            s!("input"),
+            s!("-o"),
+            s!("output"),
+            s!("--run"),
+            s!("--"),
+            s!("runner"),
+            s!("--cg"),
+            s!("--cg-timing"),
+            s!("--processes=128"),
+            format!("--cg-mem={}", self.memory_limit),
+        ];
 
-        args.push(s!("-b"));
-        args.push(self.box_id.to_string());
-
-        args.push(s!("-M"));
-        args.push(self.log_file.to_str().unwrap().to_string());
-
-        args.push(s!("-t"));
-        args.push(self.time_limit.to_string());
-
-        args.push(format!("--cg-mem={}", self.memory_limit));
-
-        args.push(s!("-w"));
-        args.push((self.time_limit + 5.0).to_string());
-
-        args.push(s!("-x"));
-        args.push((self.time_limit + 1.0).to_string());
-
-        let alternative_path = get_env("ALTERNATIVE_PATH")?;
-
-        if Path::new(&alternative_path).is_dir() {
-            args.push(format!("--dir={}", alternative_path));
+        if Path::new(&get_env("ALTERNATIVE_PATH")?).is_dir() {
+            args.push(format!("--dir={}", get_env("ALTERNATIVE_PATH")?));
         }
-
-        args.push(s!("-i"));
-        args.push(s!("input"));
-
-        args.push(s!("-o"));
-        args.push(s!("output"));
-
-        args.push(s!("--run"));
-        args.push(s!("--"));
-        args.push(s!("runner"));
 
         Ok(args)
     }
@@ -238,9 +228,7 @@ mod tests {
         };
 
         instance.init()?;
-
         instance.run()?;
-
         instance.cleanup()?;
 
         // clean up
