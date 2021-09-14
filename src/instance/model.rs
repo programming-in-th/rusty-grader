@@ -113,16 +113,7 @@ impl Instance {
                 .unwrap(),
         )
         .join("box");
-
-        println!(
-            "-> {} {} {} {} {}",
-            self.box_id,
-            self.bin_path.to_str().unwrap(),
-            self.bin_path.is_file(),
-            self.box_path.to_str().unwrap(),
-            self.box_path.is_dir(),
-        );
-
+        
         let tmp_path = get_env("TEMPORARY_PATH")?;
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
