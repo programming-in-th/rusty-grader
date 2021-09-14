@@ -110,11 +110,18 @@ impl Instance {
         let box_path = Command::new(get_env("ISOLATE_PATH")?)
             .args(&["--init", "--cg", "-b"])
             .arg(self.box_id.to_string())
-            .output().map_err(|_|InstanceError::PermissionError(
-                s!("Unable to run isolate --init command.")
-            ))?;
+            .output()
+            .map_err(|_| {
+                InstanceError::PermissionError(s!("Unable to run isolate --init command."))
+            })?;
 
-        self.box_path = PathBuf::from(String::from_utf8(box_path.stdout).unwrap().strip_suffix("\n").unwrap()).join("box");
+        self.box_path = PathBuf::from(
+            String::from_utf8(box_path.stdout)
+                .unwrap()
+                .strip_suffix("\n")
+                .unwrap(),
+        )
+        .join("box");
 
         let tmp_path = get_env("TEMPORARY_PATH")?;
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
@@ -152,14 +159,13 @@ impl Instance {
         let args = self.get_arguments()?;
         let box_output = Command::new(get_env("ISOLATE_PATH")?)
             .args(args)
-            .output().map_err(|_|InstanceError::PermissionError(
-                s!("Unable to run isolate.")
-            ))?;
-        
+            .output()
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to run isolate.")))?;
+
         Ok(InstanceResult {
-            status: RunVerdict::OK, 
+            status: RunVerdict::OK,
             time_usage: 1,
-            memory_usage: 1
+            memory_usage: 1,
         })
     }
 
@@ -167,15 +173,15 @@ impl Instance {
         Command::new(get_env("ISOLATE_PATH")?)
             .args(&["--cleanup", "--cg", "-b"])
             .arg(self.box_id.to_string())
-            .output().map_err(|_|InstanceError::PermissionError(
-                s!("Unable to cleanup isolate --cleanup command.")
-            ))?;
+            .output()
+            .map_err(|_| {
+                InstanceError::PermissionError(s!("Unable to cleanup isolate --cleanup command."))
+            })?;
 
         Command::new("rm")
             .arg(self.log_file.to_str().unwrap())
-            .output().map_err(|_|InstanceError::PermissionError(
-                s!("Unable to remove log file.")
-            ))?;
+            .output()
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove log file.")))?;
 
         Ok(())
     }
@@ -183,12 +189,12 @@ impl Instance {
 
 #[cfg(test)]
 mod tests {
+    use crate::instance::error::InstanceError;
+    use crate::instance::model::Instance;
     use dotenv::dotenv;
     use std::env;
     use std::path::PathBuf;
     use std::process::Command;
-    use crate::instance::model::Instance;
-    use crate::instance::error::InstanceError;
 
     #[test]
     fn declare_variable() -> Result<(), InstanceError> {
@@ -209,15 +215,16 @@ mod tests {
     fn initialize_instance() -> Result<(), InstanceError> {
         dotenv().ok();
         // get base directory
-        let base_dir = PathBuf::from(env::current_dir().unwrap()).join("tests").join("instance");
+        let base_dir = PathBuf::from(env::current_dir().unwrap())
+            .join("tests")
+            .join("instance");
 
         // compile cpp first
         Command::new(base_dir.join("compile_cpp").to_str().unwrap())
-        .arg(base_dir.to_str().unwrap())
-        .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
-        .output().map_err(|_|InstanceError::PermissionError(
-            s!("Unable to compile file")
-        ))?; 
+            .arg(base_dir.to_str().unwrap())
+            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+            .output()
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile file")))?;
 
         let mut instance = Instance {
             box_id: 1,
@@ -238,11 +245,10 @@ mod tests {
 
         // clean up
         Command::new("rm")
-        .arg(base_dir.join("bin").to_str().unwrap())
-        .arg(base_dir.join("compileMsg").to_str().unwrap())
-        .output().map_err(|_|InstanceError::PermissionError(
-            s!("Unable to compile file")
-        ))?;
+            .arg(base_dir.join("bin").to_str().unwrap())
+            .arg(base_dir.join("compileMsg").to_str().unwrap())
+            .output()
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile file")))?;
 
         Ok(())
     }
