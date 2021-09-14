@@ -4,6 +4,7 @@ macro_rules! s {
     };
 }
 use std::env;
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -37,9 +38,9 @@ pub struct InstanceResult {
     pub memory_usage: u32,
 }
 
-fn get_env(name: &'static str) -> Result<String, InstanceError> {
+pub fn get_env(name: &'static str) -> Result<String, InstanceError> {
     env::var(name)
-        .map_err(|_| InstanceError::EnvorimentError(format!("cannot get {} from env", name)))
+        .map_err(|_| InstanceError::EnvironmentError(format!("cannot get {} from env", name)))
 }
 
 impl Instance {
@@ -113,35 +114,42 @@ impl Instance {
         )
         .join("box");
 
+        println!(
+            "-> {} {} {} {} {}",
+            self.box_id,
+            self.bin_path.to_str().unwrap(),
+            self.bin_path.is_file(),
+            self.box_path.to_str().unwrap(),
+            self.box_path.is_dir(),
+        );
+
         let tmp_path = get_env("TEMPORARY_PATH")?;
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
-        Command::new("cp")
-            .arg(self.input_path.to_str().unwrap())
-            .arg(self.box_path.join("input").to_str().unwrap())
-            .output()
-            .map_err(|_| {
-                InstanceError::PermissionError(s!("Unable to copy input file into box directory"))
-            })?;
+        fs::copy(
+            self.input_path.to_str().unwrap(),
+            self.box_path.join("input").to_str().unwrap(),
+        )
+        .map_err(|_| {
+            InstanceError::PermissionError(s!("Unable to copy input file into box directory"))
+        })?;
 
-        Command::new("cp")
-            .arg(self.bin_path.to_str().unwrap())
-            .arg(self.box_path.to_str().unwrap())
-            .output()
-            .map_err(|_| {
-                InstanceError::PermissionError(s!(
-                    "Unable to copy user exec file into box directory"
-                ))
-            })?;
-        Command::new("cp")
-            .arg(self.runner_path.to_str().unwrap())
-            .arg(self.box_path.join("runner").to_str().unwrap())
-            .output()
-            .map_err(|_| {
-                InstanceError::PermissionError(s!(
-                    "Unable to copy runner script into box directory"
-                ))
-            })?;
+        fs::copy(
+            self.bin_path.to_str().unwrap(),
+            self.box_path.join(self.bin_path.file_name().unwrap()).to_str().unwrap(),
+        )
+        .map_err(|_| {
+            InstanceError::PermissionError(s!("Unable to copy user exec file into box directory"))
+        })?;
+
+        fs::copy(
+            self.runner_path.to_str().unwrap(),
+            self.box_path.join("runner").to_str().unwrap(),
+        )
+        .map_err(|_| {
+            InstanceError::PermissionError(s!("Unable to copy runner script into box directory"))
+        })?;
+
         Ok(())
     }
 
@@ -180,16 +188,18 @@ impl Instance {
 #[cfg(test)]
 mod tests {
     use crate::instance::error::InstanceError;
-    use crate::instance::model::Instance;
+    use crate::instance::model::{get_env, Instance};
     use dotenv::dotenv;
     use std::env;
+    use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
 
     #[test]
     fn declare_variable() -> Result<(), InstanceError> {
+        let test_id = 1;
         let instance = Instance {
-            box_id: 1,
+            box_id: test_id,
             bin_path: PathBuf::from("/path/to/bin"),
             time_limit: 1.0,
             memory_limit: 512000,
@@ -203,22 +213,31 @@ mod tests {
 
     #[test]
     fn initialize_instance() -> Result<(), InstanceError> {
+        let test_id = 2;
         dotenv().ok();
         // get base directory
         let base_dir = PathBuf::from(env::current_dir().unwrap())
             .join("tests")
             .join("instance");
 
-        // compile cpp first
+        let tmp_dir =
+            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+
+        if !tmp_dir.is_dir() {
+            fs::create_dir(&tmp_dir).map_err(|_| {
+                InstanceError::PermissionError(s!("Unable to create tmp directory"))
+            })?;
+        }
+
         Command::new(base_dir.join("compile_cpp").to_str().unwrap())
-            .arg(base_dir.to_str().unwrap())
+            .arg(tmp_dir.to_str().unwrap())
             .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
             .output()
             .map_err(|_| InstanceError::PermissionError(s!("Unable to compile file")))?;
 
         let mut instance = Instance {
-            box_id: 1,
-            bin_path: base_dir.join("bin"),
+            box_id: test_id,
+            bin_path: tmp_dir.join("bin"),
             time_limit: 1.0,
             memory_limit: 512000,
             input_path: base_dir.join("input.txt"),
@@ -227,17 +246,176 @@ mod tests {
             ..Default::default()
         };
 
-        instance.init()?;
-        instance.run()?;
-        instance.cleanup()?;
+        let result = || -> Result<(), InstanceError> {
+            instance.cleanup()?;
+            instance.init()?;
+            instance.run()?;
+            Ok(())
+        }();
 
         // clean up
-        Command::new("rm")
-            .arg(base_dir.join("bin").to_str().unwrap())
-            .arg(base_dir.join("compileMsg").to_str().unwrap())
-            .output()
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile file")))?;
+        fs::remove_dir_all(&tmp_dir)
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
 
+        instance.cleanup()?;
+        result
+    }
+
+    #[test]
+    fn should_error_if_input_path_is_wrong() -> Result<(), InstanceError> {
+        let test_id = 3;
+        dotenv().ok();
+        // get base directory
+        let base_dir = PathBuf::from(env::current_dir().unwrap())
+            .join("tests")
+            .join("instance");
+
+        let tmp_dir =
+            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+
+        if !tmp_dir.is_dir() {
+            fs::create_dir(&tmp_dir).map_err(|_| {
+                InstanceError::PermissionError(s!("Unable to create tmp directory"))
+            })?;
+        }
+
+        // compile cpp first
+        Command::new(base_dir.join("compile_cpp").to_str().unwrap())
+            .arg(tmp_dir.to_str().unwrap())
+            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+            .output()
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile files")))?;
+
+        let mut instance = Instance {
+            box_id: test_id,
+            bin_path: tmp_dir.join("bin"),
+            time_limit: 1.0,
+            memory_limit: 512000,
+            input_path: base_dir.join("input.txt_wrong_path"),
+            output_path: base_dir.join("output.txt"),
+            runner_path: base_dir.join("run_cpp"),
+            ..Default::default()
+        };
+
+        instance.cleanup()?;
+
+        let init_result = instance.init();
+
+        fs::remove_dir_all(&tmp_dir)
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
+
+        instance.cleanup()?;
+
+        assert_eq!(
+            init_result,
+            Err(InstanceError::PermissionError(s!(
+                "Unable to copy input file into box directory"
+            )))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn should_error_if_output_path_is_wrong() -> Result<(), InstanceError> {
+        let test_id = 4;
+        dotenv().ok();
+        // get base directory
+        let base_dir = PathBuf::from(env::current_dir().unwrap())
+            .join("tests")
+            .join("instance");
+
+        let tmp_dir =
+            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+
+        if !tmp_dir.is_dir() {
+            fs::create_dir(&tmp_dir).map_err(|_| {
+                InstanceError::PermissionError(s!("Unable to create tmp directory"))
+            })?;
+        }
+
+        // compile cpp first
+        Command::new(base_dir.join("compile_cpp").to_str().unwrap())
+            .arg(tmp_dir.to_str().unwrap())
+            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+            .output()
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile files")))?;
+
+        let mut instance = Instance {
+            box_id: test_id,
+            bin_path: tmp_dir.join("bin_wrong_path"),
+            time_limit: 1.0,
+            memory_limit: 512000,
+            input_path: base_dir.join("input.txt"),
+            output_path: base_dir.join("output.txt"),
+            runner_path: base_dir.join("run_cpp"),
+            ..Default::default()
+        };
+
+        instance.cleanup()?;
+
+        let init_result = instance.init();
+
+        fs::remove_dir_all(&tmp_dir)
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
+
+        assert_eq!(
+            init_result,
+            Err(InstanceError::PermissionError(s!(
+                "Unable to copy user exec file into box directory"
+            )))
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
+        let test_id = 5;
+        dotenv().ok();
+        // get base directory
+        let base_dir = PathBuf::from(env::current_dir().unwrap())
+            .join("tests")
+            .join("instance");
+
+        let tmp_dir =
+            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+
+        if !tmp_dir.is_dir() {
+            fs::create_dir(&tmp_dir).map_err(|_| {
+                InstanceError::PermissionError(s!("Unable to create tmp directory"))
+            })?;
+        }
+
+        // compile cpp first
+        Command::new(base_dir.join("compile_cpp").to_str().unwrap())
+            .arg(tmp_dir.to_str().unwrap())
+            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+            .output()
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile files")))?;
+
+        let mut instance = Instance {
+            box_id: test_id,
+            bin_path: tmp_dir.join("bin"),
+            time_limit: 1.0,
+            memory_limit: 512000,
+            input_path: base_dir.join("input.txt"),
+            output_path: base_dir.join("output.txt"),
+            runner_path: base_dir.join("run_cpp_wrong_path"),
+            ..Default::default()
+        };
+
+        instance.cleanup()?;
+
+        let init_result = instance.init();
+
+        fs::remove_dir_all(&tmp_dir)
+            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
+
+        assert_eq!(
+            init_result,
+            Err(InstanceError::PermissionError(s!(
+                "Unable to copy runner script into box directory"
+            )))
+        );
         Ok(())
     }
 }
