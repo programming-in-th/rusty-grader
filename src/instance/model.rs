@@ -9,16 +9,17 @@ use std::process::Command;
 
 use crate::instance::error::InstanceError;
 
+#[derive(Default)]
 pub struct Instance {
-    box_path: PathBuf,
-    box_id: u32,
-    bin_path: PathBuf,
-    log_file: PathBuf,
-    time_limit: f64,
-    memory_limit: u64,
-    input_path: PathBuf,
-    output_path: PathBuf,
-    runner_path: PathBuf,
+    pub box_path: PathBuf,
+    pub log_file: PathBuf,
+    pub box_id: u32,
+    pub bin_path: PathBuf,
+    pub time_limit: f64,
+    pub memory_limit: u64,
+    pub input_path: PathBuf,
+    pub output_path: PathBuf,
+    pub runner_path: PathBuf,
 }
 
 pub enum RunVerdict {
@@ -31,9 +32,9 @@ pub enum RunVerdict {
 }
 
 pub struct InstanceResult {
-    status: RunVerdict,
-    time_usage: u32,
-    memory_usage: u32,
+    pub status: RunVerdict,
+    pub time_usage: u32,
+    pub memory_usage: u32,
 }
 
 fn get_env(name: &'static str) -> Result<String, InstanceError> {
@@ -42,29 +43,6 @@ fn get_env(name: &'static str) -> Result<String, InstanceError> {
 }
 
 impl Instance {
-    pub fn new(
-        box_id: u32,
-        bin_path: PathBuf,
-        log_file: PathBuf,
-        time_limit: f64,
-        memory_limit: u64,
-        input_path: PathBuf,
-        output_path: PathBuf,
-        runner_path: PathBuf,
-    ) -> Self {
-        Self {
-            box_id,
-            bin_path,
-            log_file,
-            time_limit,
-            memory_limit,
-            input_path,
-            output_path,
-            runner_path,
-            box_path: PathBuf::from(""),
-        }
-    }
-
     fn get_arguments(&self) -> Result<Vec<String>, InstanceError> {
         let mut args: Vec<String> = Vec::new();
         args.push(s!("--cg"));
@@ -100,6 +78,10 @@ impl Instance {
         args.push(s!("-i"));
         args.push(self.output_path.to_str().unwrap().to_string());
 
+        args.push(s!("--run"));
+        args.push(s!("--"));
+        args.push(s!("runner"));
+
         Ok(args)
     }
 
@@ -125,18 +107,17 @@ impl Instance {
     pub fn init(&mut self) -> Result<(), InstanceError> {
         self.check_root_permission()?;
 
-        let isolate_path = get_env("ISOLATE_PATH")?;
-
-        let box_path = Command::new(isolate_path)
-            .arg("--cg")
-            .arg("-b")
+        let box_path = Command::new(get_env("ISOLATE_PATH")?)
+            .args(["--init", "--cg", "-b"])
             .arg(self.box_id.to_string())
-            .arg("--init")
             .output().map_err(|_|InstanceError::PermissionError(
-                s!("Unable to run isolate --init command. Does a box already exist? If so, you must clean up first.")
+                s!("Unable to run isolate --init command.")
             ))?;
 
         self.box_path = PathBuf::from(String::from_utf8(box_path.stdout).unwrap()).join("box");
+
+        let tmp_path = get_env("TEMPORARY_PATH")?;
+        self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
         Command::new("cp")
             .arg(self.input_path.to_str().unwrap())
@@ -156,7 +137,7 @@ impl Instance {
             })?;
         Command::new("cp")
             .arg(self.runner_path.to_str().unwrap())
-            .arg(self.box_path.to_str().unwrap())
+            .arg(self.box_path.join("runner").to_str().unwrap())
             .output()
             .map_err(|_| {
                 InstanceError::PermissionError(s!(
@@ -167,11 +148,29 @@ impl Instance {
     }
 
     pub fn run(&self) -> Result<InstanceResult, InstanceError> {
-        let arg = self.get_arguments();
+        let args = self.get_arguments()?;
+        let box_output = Command::new(get_env("ISOLATE_PATH")?)
+            .args(args)
+            .output().map_err(|_|InstanceError::PermissionError(
+                s!("Unable to run isolate.")
+            ))?;
+        
         Err(InstanceError::PermissionError(s!("")))
     }
 
-    pub fn cleanup() -> Result<(), InstanceError> {
+    pub fn cleanup(&self) -> Result<(), InstanceError> {
+        Command::new("rm")
+            .arg(self.log_file.to_str().unwrap())
+            .output().map_err(|_|InstanceError::PermissionError(
+                s!("Unable to remove log file.")
+            ))?;
+
+        Command::new(get_env("ISOLATE_PATH")?)
+            .args(["--cleanup", "--cg", "-b"])
+            .arg(self.box_id.to_string())
+            .output().map_err(|_|InstanceError::PermissionError(
+                s!("Unable to cleanup isolate --cleanup command.")
+            ))?;
         Ok(())
     }
 }
