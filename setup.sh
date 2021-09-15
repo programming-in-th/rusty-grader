@@ -6,6 +6,8 @@ echo never > /sys/kernel/mm/transparent_hugepage/defrag
 echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
 
 apt install make gcc libcap-dev
+
+cd isolate
 make isolate
 cp isolate /usr/local/bin/isolate
 cp default.cf /usr/local/etc/isolate
