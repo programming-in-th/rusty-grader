@@ -180,6 +180,109 @@ fn should_read_log_correctly_when_ok() {
 }
 
 #[test]
+fn should_trigger_when_read_log_with_re() {
+    dotenv().ok();
+    // get base directory
+    let base_dir = PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance");
+
+    let instance = Instance {
+        log_file: base_dir.join("log_re.txt"),
+        memory_limit: 1000,
+        ..Default::default()
+    };
+
+    let result = instance.get_result();
+
+    assert_eq!(
+        result,
+        InstanceResult {
+            status: RunVerdict::VerdictRE,
+            time_usage: 0.002,
+            memory_usage: 3056,
+        }
+    );
+}
+
+#[test]
+fn should_trigger_when_read_log_with_to() {
+    dotenv().ok();
+    // get base directory
+    let base_dir = PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance");
+
+    let instance = Instance {
+        log_file: base_dir.join("log_to.txt"),
+        memory_limit: 1000,
+        ..Default::default()
+    };
+
+    let result = instance.get_result();
+
+    assert_eq!(
+        result,
+        InstanceResult {
+            status: RunVerdict::VerdictTLE,
+            time_usage: 2.095,
+            memory_usage: 3076,
+        }
+    );
+}
+
+#[test]
+fn should_trigger_when_read_log_with_sg() {
+    dotenv().ok();
+    // get base directory
+    let base_dir = PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance");
+
+    let instance = Instance {
+        log_file: base_dir.join("log_sg.txt"),
+        memory_limit: 1000,
+        ..Default::default()
+    };
+
+    let result = instance.get_result();
+
+    assert_eq!(
+        result,
+        InstanceResult {
+            status: RunVerdict::VerdictSG,
+            time_usage: 0.002,
+            memory_usage: 3004,
+        }
+    );
+}
+
+#[test]
+fn should_trigger_when_read_log_with_xx() {
+    dotenv().ok();
+    // get base directory
+    let base_dir = PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance");
+
+    let instance = Instance {
+        log_file: base_dir.join("log_xx.txt"),
+        memory_limit: 1000,
+        ..Default::default()
+    };
+
+    let result = instance.get_result();
+
+    assert_eq!(
+        result,
+        InstanceResult {
+            status: RunVerdict::VerdictXX,
+            ..Default::default()
+        }
+    );
+}
+
+#[test]
 fn should_trigger_when_read_log_with_memory_limit_exceeded() {
     dotenv().ok();
     // get base directory
