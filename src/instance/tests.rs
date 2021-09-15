@@ -1,26 +1,46 @@
 use super::*;
 use dotenv::dotenv;
 
-#[test]
-fn initialize_instance() -> Result<(), InstanceError> {
-    dotenv().ok();
-    // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
-        .join("tests")
-        .join("instance");
 
-    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("init_instance");
+struct TempDir(PathBuf);
 
-    if !tmp_dir.is_dir() {
-        fs::create_dir(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+impl Drop for TempDir {
+    fn drop(&mut self) {
+        fs::remove_dir_all(&self.0)
+            .expect("Unable to remove tmp directory");
     }
+}
 
-    Command::new(&base_dir.join("compile_cpp"))
+impl TempDir {
+    fn new(tmp_name: &'static str) -> Self {
+        let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(tmp_path);
+        fs.create_dir(&tmp_path).expect("Unable to remove tmp directory");
+        Self(tmp_path)
+    }
+}
+
+fn get_base_path() -> PathBuf {
+    PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance")
+}
+
+fn compile_cpp(tmp_dir: &PathBuf, prog_file: &PathBuf) {
+    Command::new(&get_base_path().join("compile_cpp"))
         .arg(&tmp_dir)
-        .arg(&base_dir.join("a_plus_b.cpp"))
-        .output()
-        .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
+        .arg(&prog_file)
+        .status()
+        .expect("Unable to compile file"); 
+}
+
+
+#[test]
+fn initialize_instance() {
+    dotenv().ok();
+     
+    let base_path = get_base_path();
+    let tmp_dir = TempDir("initialize_instance");
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
 
     let mut instance = Instance::new(
         1.0,
@@ -30,40 +50,25 @@ fn initialize_instance() -> Result<(), InstanceError> {
         base_dir.join("run_cpp"),
     );
 
-    let result = || -> Result<(), InstanceError> {
-        instance.init()?;
-        instance.run()?;
-        Ok(())
-    }();
-
-    // clean up
-    fs::remove_dir_all(&tmp_dir)
-        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
-
-    result
+    instance.init();
+    instance.run();
 }
 
 #[test]
-fn should_error_if_input_path_is_wrong() -> Result<(), InstanceError> {
+#[should_panic(expected = "Unable to copy input file into box directory")]
+fn should_error_if_input_path_is_wrong() {
     dotenv().ok();
     // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
-        .join("tests")
-        .join("instance");
+    let base_dir = );
 
-    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_input_path_is_wrong");
-
-    if !tmp_dir.is_dir() {
-        fs::create_dir(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
-    }
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_input_path_is_wrong");
 
     // compile cpp first
     Command::new(&base_dir.join("compile_cpp"))
         .arg(&tmp_dir)
         .arg(&base_dir.join("a_plus_b.cpp"))
         .output()
-        .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to compile files"));
 
     let mut instance = Instance::new(
         1.0,
@@ -76,7 +81,7 @@ fn should_error_if_input_path_is_wrong() -> Result<(), InstanceError> {
     let init_result = instance.init();
 
     fs::remove_dir_all(&tmp_dir)
-        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"));
 
     assert_eq!(
         init_result,
@@ -88,18 +93,18 @@ fn should_error_if_input_path_is_wrong() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_error_if_output_path_is_wrong() -> Result<(), InstanceError> {
+fn should_error_if_output_path_is_wrong() {
     dotenv().ok();
     // get base directory
     let base_dir = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance");
 
-    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_output_path_is_wrong");
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_output_path_is_wrong");
 
     if !tmp_dir.is_dir() {
         fs::create_dir(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"));
     }
 
     // compile cpp first
@@ -107,7 +112,7 @@ fn should_error_if_output_path_is_wrong() -> Result<(), InstanceError> {
         .arg(&tmp_dir)
         .arg(&base_dir.join("a_plus_b.cpp"))
         .output()
-        .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to compile files"));
 
     let mut instance = Instance::new(
         1.0,
@@ -120,7 +125,7 @@ fn should_error_if_output_path_is_wrong() -> Result<(), InstanceError> {
     let init_result = instance.init();
 
     fs::remove_dir_all(&tmp_dir)
-        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"));
 
     assert_eq!(
         init_result,
@@ -132,18 +137,18 @@ fn should_error_if_output_path_is_wrong() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
+fn should_error_if_runner_path_is_wrong() {
     dotenv().ok();
     // get base directory
     let base_dir = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance");
 
-    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_runner_path_is_wrong");
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_runner_path_is_wrong");
 
     if !tmp_dir.is_dir() {
         fs::create_dir(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"));
     }
 
     // compile cpp first
@@ -151,7 +156,7 @@ fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
         .arg(&tmp_dir)
         .arg(&base_dir.join("a_plus_b.cpp"))
         .output()
-        .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to compile files"));
 
     let mut instance = Instance::new(
         1.0,
@@ -164,7 +169,7 @@ fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
     let init_result = instance.init();
 
     fs::remove_dir_all(&tmp_dir)
-        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"));
 
     assert_eq!(
         init_result,
@@ -176,21 +181,21 @@ fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_read_log_correctly_when_ok() -> Result<(), InstanceError> {
+fn should_read_log_correctly_when_ok() {
     dotenv().ok();
     let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance")
         .join("log_ok.txt");
     
-    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_ok.txt");
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_log_ok.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp");
 
     let mut instance: Instance = Default::default();
     instance.log_file = tmp_log;
     instance.memory_limit = 4000;
 
-    let result = instance.get_result()?;
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -204,21 +209,21 @@ fn should_read_log_correctly_when_ok() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_re() -> Result<(), InstanceError> {
+fn should_trigger_when_read_log_with_re() {
     dotenv().ok();
     let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance")
         .join("log_re.txt");
     
-    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_re.txt");
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_log_re.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_re to tmp");
 
     let mut instance: Instance = Default::default();
     instance.log_file = tmp_log;
     instance.memory_limit = 4000;
 
-    let result = instance.get_result()?;
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -233,21 +238,21 @@ fn should_trigger_when_read_log_with_re() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_to() -> Result<(), InstanceError> {
+fn should_trigger_when_read_log_with_to() {
     dotenv().ok();
     let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance")
         .join("log_to.txt");
     
-    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_to.txt");
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_log_to.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_to to tmp");
 
     let mut instance: Instance = Default::default();
     instance.log_file = tmp_log;
     instance.memory_limit = 4000;
 
-    let result = instance.get_result()?;
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -262,7 +267,7 @@ fn should_trigger_when_read_log_with_to() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_sg() -> Result<(), InstanceError> {
+fn should_trigger_when_read_log_with_sg() {
     dotenv().ok();
     // get base directory
     let test_log = PathBuf::from(env::current_dir().unwrap())
@@ -270,14 +275,14 @@ fn should_trigger_when_read_log_with_sg() -> Result<(), InstanceError> {
         .join("instance")
         .join("log_sg.txt");
     
-    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_sg.txt");
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_log_sg.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_sg to tmp");
 
     let mut instance: Instance = Default::default();
     instance.log_file = tmp_log;
     instance.memory_limit = 4000;
 
-    let result = instance.get_result()?;
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -292,7 +297,7 @@ fn should_trigger_when_read_log_with_sg() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_xx() -> Result<(), InstanceError> {
+fn should_trigger_when_read_log_with_xx() {
     dotenv().ok();
     // get base directory
     let test_log = PathBuf::from(env::current_dir().unwrap())
@@ -300,14 +305,14 @@ fn should_trigger_when_read_log_with_xx() -> Result<(), InstanceError> {
         .join("instance")
         .join("log_xx.txt");
     
-    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_xx.txt");
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_log_xx.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_xx to tmp");
 
     let mut instance: Instance = Default::default();
     instance.log_file = tmp_log;
     instance.memory_limit = 4000;
 
-    let result = instance.get_result()?;
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -321,7 +326,7 @@ fn should_trigger_when_read_log_with_xx() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_mle() -> Result<(), InstanceError> {
+fn should_trigger_when_read_log_with_mle() {
     dotenv().ok();
     // get base directory
     let test_log = PathBuf::from(env::current_dir().unwrap())
@@ -329,14 +334,14 @@ fn should_trigger_when_read_log_with_mle() -> Result<(), InstanceError> {
         .join("instance")
         .join("log_ok.txt");
     
-    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_mle.txt");
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")).join("test_log_mle.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp (MLE)");
 
     let mut instance: Instance = Default::default();
     instance.log_file = tmp_log;
     instance.memory_limit = 1000;
 
-    let result = instance.get_result()?;
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -351,25 +356,25 @@ fn should_trigger_when_read_log_with_mle() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_get_tle() -> Result<(), InstanceError> {
+fn should_get_tle() {
     dotenv().ok();
     // get base directory
     let base_dir = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance");
 
-    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("should_get_tle");
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")).join("should_get_tle");
 
     if !tmp_dir.is_dir() {
         fs::create_dir(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"));
     }
 
     Command::new(&base_dir.join("compile_cpp"))
         .arg(&tmp_dir)
         .arg(&base_dir.join("a_plus_b_TLE.cpp"))
         .output()
-        .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to compile file"));
 
     let mut instance = Instance::new(
         1.0,
@@ -380,14 +385,14 @@ fn should_get_tle() -> Result<(), InstanceError> {
     );
 
     let result = || -> Result<InstanceResult, InstanceError> {
-        instance.init()?;
-        instance.run()?;
+        instance.init();
+        instance.run();
         instance.get_result()
-    }()?;
+    }();
 
     // clean up
     fs::remove_dir_all(&tmp_dir)
-        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"));
 
     assert_eq!(result.status, RunVerdict::VerdictTLE);
 
@@ -395,25 +400,25 @@ fn should_get_tle() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_get_re() -> Result<(), InstanceError> {
+fn should_get_re() {
     dotenv().ok();
     // get base directory
     let base_dir = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance");
 
-    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("should_get_re");
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")).join("should_get_re");
 
     if !tmp_dir.is_dir() {
         fs::create_dir(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"));
     }
 
     Command::new(&base_dir.join("compile_cpp"))
         .arg(&tmp_dir)
         .arg(&base_dir.join("a_plus_b_RE.cpp"))
         .output()
-        .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to compile file"));
 
     let mut instance = Instance::new(
         1.0,
@@ -424,14 +429,14 @@ fn should_get_re() -> Result<(), InstanceError> {
     );
 
     let result = || -> Result<InstanceResult, InstanceError> {
-        instance.init()?;
-        instance.run()?;
+        instance.init();
+        instance.run();
         instance.get_result()
-    }()?;
+    }();
 
     // clean up
     fs::remove_dir_all(&tmp_dir)
-        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"));
 
     assert_eq!(result.status, RunVerdict::VerdictRE);
 
@@ -439,25 +444,25 @@ fn should_get_re() -> Result<(), InstanceError> {
 }
 
 #[test]
-fn should_get_mle() -> Result<(), InstanceError> {
+fn should_get_mle() {
     dotenv().ok();
     // get base directory
     let base_dir = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
         .join("instance");
 
-    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("should_get_mle");
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")).join("should_get_mle");
 
     if !tmp_dir.is_dir() {
         fs::create_dir(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"));
     }
 
     Command::new(&base_dir.join("compile_cpp"))
         .arg(&tmp_dir)
         .arg(&base_dir.join("a_plus_b.cpp"))
         .output()
-        .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to compile file"));
 
     let mut instance = Instance::new(
         1.0,
@@ -468,14 +473,14 @@ fn should_get_mle() -> Result<(), InstanceError> {
     );
 
     let result = || -> Result<InstanceResult, InstanceError> {
-        instance.init()?;
-        instance.run()?;
+        instance.init();
+        instance.run();
         instance.get_result()
-    }()?;
+    }();
 
     // clean up
     fs::remove_dir_all(&tmp_dir)
-        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"));
 
     assert_eq!(result.status, RunVerdict::VerdictMLE);
 
