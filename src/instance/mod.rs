@@ -1,13 +1,23 @@
-mod error;
+macro_rules! instance {
+  ($($arg:ident: $val:expr),*) => {{
+      let mut instance: Instance = Default::default();
+      $(instance.$arg = $val;)*
+      instance
+  }}
+}
+
 #[cfg(test)]
+#[macro_use]
 mod tests;
 
-use std::env;
-use std::fs;
-use std::path::{Path, PathBuf};
-use std::process::Command;
+mod error;
 
 use error::InstanceError;
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct Instance {
@@ -20,6 +30,7 @@ pub struct Instance {
     pub input_path: PathBuf,
     pub runner_path: PathBuf,
 }
+
 
 impl Drop for Instance {
     fn drop(&mut self) {
@@ -64,25 +75,6 @@ pub fn get_env(name: &'static str) -> Result<String, InstanceError> {
 }
 
 impl Instance {
-    pub fn new(
-        time_limit: f64,
-        memory_limit: u64,
-        bin_path: PathBuf,
-        input_path: PathBuf,
-        runner_path: PathBuf,
-    ) -> Self {
-        Self {
-            time_limit,
-            memory_limit,
-            bin_path,
-            input_path,
-            runner_path,
-            box_id: 0,
-            box_path: PathBuf::new(),
-            log_file: PathBuf::new(),
-        }
-    }
-
     pub fn get_arguments(&self) -> Result<Vec<String>, InstanceError> {
         let mut args: Vec<String> = vec![
             String::from("-b"),
