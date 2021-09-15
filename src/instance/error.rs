@@ -1,5 +1,5 @@
 #[derive(Debug, PartialEq)]
 pub enum InstanceError {
-    PermissionError(String),
+    PermissionError(&'static str),
     EnvironmentError(String),
 }

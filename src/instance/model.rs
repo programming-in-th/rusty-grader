@@ -1,8 +1,3 @@
-macro_rules! s {
-    ($x:expr) => {
-        String::from($x);
-    };
-}
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -54,26 +49,26 @@ pub fn get_env(name: &'static str) -> Result<String, InstanceError> {
 impl Instance {
     pub fn get_arguments(&self) -> Result<Vec<String>, InstanceError> {
         let mut args: Vec<String> = vec![
-            s!("-b"),
+            String::from("-b"),
             self.box_id.to_string(),
-            s!("-M"),
+            String::from("-M"),
             self.log_file.to_str().unwrap().to_string(),
-            s!("-t"),
+            String::from("-t"),
             self.time_limit.to_string(),
-            s!("-w"),
+            String::from("-w"),
             (self.time_limit + 5.0).to_string(),
-            s!("-x"),
+            String::from("-x"),
             (self.time_limit + 1.0).to_string(),
-            s!("-i"),
-            s!("input"),
-            s!("-o"),
-            s!("output"),
-            s!("--run"),
-            s!("--"),
-            s!("runner"),
-            s!("--cg"),
-            s!("--cg-timing"),
-            s!("--processes=128"),
+            String::from("-i"),
+            String::from("input"),
+            String::from("-o"),
+            String::from("output"),
+            String::from("--run"),
+            String::from("--"),
+            String::from("runner"),
+            String::from("--cg"),
+            String::from("--cg-timing"),
+            String::from("--processes=128"),
             format!("--cg-mem={}", self.memory_limit),
         ];
 
@@ -92,30 +87,27 @@ impl Instance {
                 if output_string.trim() == "0" {
                     Ok(())
                 } else {
-                    Err(InstanceError::PermissionError(s!(
-                        "isolate must be run as root"
-                    )))
+                    Err(InstanceError::PermissionError(
+                        "isolate must be run as root",
+                    ))
                 }
             }
-            _ => Err(InstanceError::PermissionError(s!(
-                "unable to get current user id"
-            ))),
+            _ => Err(InstanceError::PermissionError(
+                "unable to get current user id",
+            )),
         }
     }
 
     pub fn get_result(&self) -> Result<InstanceResult, InstanceError> {
-        let log_content = fs::read_to_string(self.log_file.to_str().unwrap())
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to open log file")))?;
+        let log_content = fs::read_to_string(&self.log_file)
+            .map_err(|_| InstanceError::PermissionError("Unable to open log file"))?;
         let mut result: InstanceResult = Default::default();
         for log_line in log_content.split("\n") {
             let args: Vec<&str> = log_line.split(":").collect();
             if args.len() >= 2 {
-                let schema = args[0];
-                let data = args[1];
-                println!("{} = {}", schema, data);
-                match &*schema {
+                match &*args[0] {
                     "status" => {
-                        result.status = match &*data {
+                        result.status = match &*args[1] {
                             "RE" => RunVerdict::VerdictRE,
                             "SG" => RunVerdict::VerdictSG,
                             "TO" => RunVerdict::VerdictTLE,
@@ -123,8 +115,8 @@ impl Instance {
                             _ => RunVerdict::VerdictSG,
                         }
                     }
-                    "time" => result.time_usage = data.parse().unwrap(),
-                    "max-rss" => result.memory_usage = data.parse().unwrap(),
+                    "time" => result.time_usage = args[1].parse().unwrap(),
+                    "max-rss" => result.memory_usage = args[1].parse().unwrap(),
                     _ => (),
                 }
             }
@@ -138,50 +130,41 @@ impl Instance {
     pub fn init(&mut self) -> Result<(), InstanceError> {
         self.check_root_permission()?;
 
-        let box_path = Command::new(get_env("ISOLATE_PATH")?)
-            .args(&["--init", "--cg", "-b"])
-            .arg(self.box_id.to_string())
-            .output()
-            .map_err(|_| {
-                InstanceError::PermissionError(s!("Unable to run isolate --init command."))
-            })?;
+        for tmp_box_idx in 1..=1000 {
+            let box_path = Command::new(get_env("ISOLATE_PATH")?)
+                .args(&["--init", "--cg", "-b"])
+                .arg(tmp_box_idx.to_string())
+                .output()
+                .map_err(|_| {
+                    InstanceError::PermissionError("Unable to run isolate --init command.")
+                })?;
 
-        self.box_path = PathBuf::from(
-            String::from_utf8(box_path.stdout)
-                .unwrap()
-                .strip_suffix("\n")
-                .unwrap(),
-        )
-        .join("box");
+            if box_path.status.success() {
+                let mut box_path = String::from_utf8(box_path.stdout).unwrap();
+                box_path = box_path.strip_suffix("\n").unwrap_or(&box_path).to_string();
+                self.box_path = PathBuf::from(&box_path).join("box");
+                self.box_id = tmp_box_idx;
+                break;
+            }
+        }
 
         let tmp_path = get_env("TEMPORARY_PATH")?;
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
-        fs::copy(
-            self.input_path.to_str().unwrap(),
-            self.box_path.join("input").to_str().unwrap(),
-        )
-        .map_err(|_| {
-            InstanceError::PermissionError(s!("Unable to copy input file into box directory"))
+        fs::copy(&self.input_path, &self.box_path.join("input")).map_err(|_| {
+            InstanceError::PermissionError("Unable to copy input file into box directory")
         })?;
 
         fs::copy(
-            self.bin_path.to_str().unwrap(),
-            self.box_path
-                .join(self.bin_path.file_name().unwrap())
-                .to_str()
-                .unwrap(),
+            &self.bin_path,
+            &self.box_path.join(self.bin_path.file_name().unwrap()),
         )
         .map_err(|_| {
-            InstanceError::PermissionError(s!("Unable to copy user exec file into box directory"))
+            InstanceError::PermissionError("Unable to copy user exec file into box directory")
         })?;
 
-        fs::copy(
-            self.runner_path.to_str().unwrap(),
-            self.box_path.join("runner").to_str().unwrap(),
-        )
-        .map_err(|_| {
-            InstanceError::PermissionError(s!("Unable to copy runner script into box directory"))
+        fs::copy(&self.runner_path, &self.box_path.join("runner")).map_err(|_| {
+            InstanceError::PermissionError("Unable to copy runner script into box directory")
         })?;
 
         Ok(())
@@ -189,10 +172,10 @@ impl Instance {
 
     pub fn run(&self) -> Result<InstanceResult, InstanceError> {
         let args = self.get_arguments()?;
-        let box_output = Command::new(get_env("ISOLATE_PATH")?)
+        Command::new(get_env("ISOLATE_PATH")?)
             .args(args)
             .output()
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to run isolate.")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to run isolate."))?;
 
         self.get_result()
     }
@@ -203,13 +186,13 @@ impl Instance {
             .arg(self.box_id.to_string())
             .output()
             .map_err(|_| {
-                InstanceError::PermissionError(s!("Unable to cleanup isolate --cleanup command."))
+                InstanceError::PermissionError("Unable to cleanup isolate --cleanup command.")
             })?;
 
-        // Command::new("rm")
-        //     .arg(self.log_file.to_str().unwrap())
-        //     .output()
-        //     .map_err(|_| InstanceError::PermissionError(s!("Unable to remove log file.")))?;
+        if self.log_file.is_file() {
+            fs::remove_file(&self.log_file)
+                .map_err(|_| InstanceError::PermissionError("Unable to remove log file."))?;
+        }
 
         Ok(())
     }
@@ -226,47 +209,27 @@ mod tests {
     use std::process::Command;
 
     #[test]
-    fn declare_variable() -> Result<(), InstanceError> {
-        let test_id = 1;
-        let instance = Instance {
-            box_id: test_id,
-            bin_path: PathBuf::from("/path/to/bin"),
-            time_limit: 1.0,
-            memory_limit: 512000,
-            input_path: PathBuf::from("/path/to/in"),
-            output_path: PathBuf::from("/path/to/out"),
-            runner_path: PathBuf::from("/path/to/runner"),
-            ..Default::default()
-        };
-        Ok(())
-    }
-
-    #[test]
     fn initialize_instance() -> Result<(), InstanceError> {
-        let test_id = 2;
         dotenv().ok();
         // get base directory
         let base_dir = PathBuf::from(env::current_dir().unwrap())
             .join("tests")
             .join("instance");
 
-        let tmp_dir =
-            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+        let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("init_instance");
 
         if !tmp_dir.is_dir() {
-            fs::create_dir(&tmp_dir).map_err(|_| {
-                InstanceError::PermissionError(s!("Unable to create tmp directory"))
-            })?;
+            fs::create_dir(&tmp_dir)
+                .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
         }
 
-        Command::new(base_dir.join("compile_cpp").to_str().unwrap())
-            .arg(tmp_dir.to_str().unwrap())
-            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+        Command::new(&base_dir.join("compile_cpp"))
+            .arg(&tmp_dir)
+            .arg(&base_dir.join("a_plus_b.cpp"))
             .output()
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile file")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
 
         let mut instance = Instance {
-            box_id: test_id,
             bin_path: tmp_dir.join("bin"),
             time_limit: 1.0,
             memory_limit: 512000,
@@ -285,7 +248,7 @@ mod tests {
 
         // clean up
         fs::remove_dir_all(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
         instance.cleanup()?;
         result
@@ -293,31 +256,27 @@ mod tests {
 
     #[test]
     fn should_error_if_input_path_is_wrong() -> Result<(), InstanceError> {
-        let test_id = 3;
         dotenv().ok();
         // get base directory
         let base_dir = PathBuf::from(env::current_dir().unwrap())
             .join("tests")
             .join("instance");
 
-        let tmp_dir =
-            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+        let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_input_path_is_wrong");
 
         if !tmp_dir.is_dir() {
-            fs::create_dir(&tmp_dir).map_err(|_| {
-                InstanceError::PermissionError(s!("Unable to create tmp directory"))
-            })?;
+            fs::create_dir(&tmp_dir)
+                .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
         }
 
         // compile cpp first
-        Command::new(base_dir.join("compile_cpp").to_str().unwrap())
-            .arg(tmp_dir.to_str().unwrap())
-            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+        Command::new(&base_dir.join("compile_cpp"))
+            .arg(&tmp_dir)
+            .arg(&base_dir.join("a_plus_b.cpp"))
             .output()
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile files")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
 
         let mut instance = Instance {
-            box_id: test_id,
             bin_path: tmp_dir.join("bin"),
             time_limit: 1.0,
             memory_limit: 512000,
@@ -332,46 +291,42 @@ mod tests {
         let init_result = instance.init();
 
         fs::remove_dir_all(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
         instance.cleanup()?;
 
         assert_eq!(
             init_result,
-            Err(InstanceError::PermissionError(s!(
+            Err(InstanceError::PermissionError(
                 "Unable to copy input file into box directory"
-            )))
+            ))
         );
         Ok(())
     }
 
     #[test]
     fn should_error_if_output_path_is_wrong() -> Result<(), InstanceError> {
-        let test_id = 4;
         dotenv().ok();
         // get base directory
         let base_dir = PathBuf::from(env::current_dir().unwrap())
             .join("tests")
             .join("instance");
 
-        let tmp_dir =
-            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+        let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_output_path_is_wrong");
 
         if !tmp_dir.is_dir() {
-            fs::create_dir(&tmp_dir).map_err(|_| {
-                InstanceError::PermissionError(s!("Unable to create tmp directory"))
-            })?;
+            fs::create_dir(&tmp_dir)
+                .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
         }
 
         // compile cpp first
-        Command::new(base_dir.join("compile_cpp").to_str().unwrap())
-            .arg(tmp_dir.to_str().unwrap())
-            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+        Command::new(&base_dir.join("compile_cpp"))
+            .arg(&tmp_dir)
+            .arg(&base_dir.join("a_plus_b.cpp"))
             .output()
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile files")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
 
         let mut instance = Instance {
-            box_id: test_id,
             bin_path: tmp_dir.join("bin_wrong_path"),
             time_limit: 1.0,
             memory_limit: 512000,
@@ -386,44 +341,40 @@ mod tests {
         let init_result = instance.init();
 
         fs::remove_dir_all(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
         assert_eq!(
             init_result,
-            Err(InstanceError::PermissionError(s!(
+            Err(InstanceError::PermissionError(
                 "Unable to copy user exec file into box directory"
-            )))
+            ))
         );
         Ok(())
     }
 
     #[test]
     fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
-        let test_id = 5;
         dotenv().ok();
         // get base directory
         let base_dir = PathBuf::from(env::current_dir().unwrap())
             .join("tests")
             .join("instance");
 
-        let tmp_dir =
-            PathBuf::from(get_env("TEMPORARY_PATH")?).join(format!("test_tmp_file_{}", test_id));
+        let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_runner_path_is_wrong");
 
         if !tmp_dir.is_dir() {
-            fs::create_dir(&tmp_dir).map_err(|_| {
-                InstanceError::PermissionError(s!("Unable to create tmp directory"))
-            })?;
+            fs::create_dir(&tmp_dir)
+                .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
         }
 
         // compile cpp first
-        Command::new(base_dir.join("compile_cpp").to_str().unwrap())
-            .arg(tmp_dir.to_str().unwrap())
-            .arg(base_dir.join("a_plus_b.cpp").to_str().unwrap())
+        Command::new(&base_dir.join("compile_cpp"))
+            .arg(&tmp_dir)
+            .arg(&base_dir.join("a_plus_b.cpp"))
             .output()
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to compile files")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
 
         let mut instance = Instance {
-            box_id: test_id,
             bin_path: tmp_dir.join("bin"),
             time_limit: 1.0,
             memory_limit: 512000,
@@ -438,20 +389,19 @@ mod tests {
         let init_result = instance.init();
 
         fs::remove_dir_all(&tmp_dir)
-            .map_err(|_| InstanceError::PermissionError(s!("Unable to remove tmp directory")))?;
+            .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
         assert_eq!(
             init_result,
-            Err(InstanceError::PermissionError(s!(
+            Err(InstanceError::PermissionError(
                 "Unable to copy runner script into box directory"
-            )))
+            ))
         );
         Ok(())
     }
 
     #[test]
     fn should_read_log_correctly_when_ok() -> Result<(), InstanceError> {
-        let test_id = 6;
         dotenv().ok();
         // get base directory
         let base_dir = PathBuf::from(env::current_dir().unwrap())
@@ -459,7 +409,6 @@ mod tests {
             .join("instance");
 
         let instance = Instance {
-            box_id: test_id,
             log_file: base_dir.join("log_ok.txt"),
             time_limit: 1.0,
             memory_limit: 4000,
@@ -481,7 +430,6 @@ mod tests {
 
     #[test]
     fn should_trigger_when_read_log_with_memory_limit_exceeded() -> Result<(), InstanceError> {
-        let test_id = 7;
         dotenv().ok();
         // get base directory
         let base_dir = PathBuf::from(env::current_dir().unwrap())
@@ -489,7 +437,6 @@ mod tests {
             .join("instance");
 
         let instance = Instance {
-            box_id: test_id,
             log_file: base_dir.join("log_ok.txt"),
             time_limit: 1.0,
             memory_limit: 1000,
