@@ -22,15 +22,13 @@ fn initialize_instance() -> Result<(), InstanceError> {
         .output()
         .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
 
-    let mut instance = Instance {
-        bin_path: tmp_dir.join("bin"),
-        time_limit: 1.0,
-        memory_limit: 512000,
-        input_path: base_dir.join("input.txt"),
-        output_path: base_dir.join("output.txt"),
-        runner_path: base_dir.join("run_cpp"),
-        ..Default::default()
-    };
+    let mut instance = Instance::new(
+        1.0,
+        512000,
+        tmp_dir.join("bin"),
+        base_dir.join("input.txt"),
+        base_dir.join("run_cpp"),
+    );
 
     let result = || -> Result<(), InstanceError> {
         instance.init()?;
@@ -42,7 +40,6 @@ fn initialize_instance() -> Result<(), InstanceError> {
     fs::remove_dir_all(&tmp_dir)
         .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
-    instance.cleanup()?;
     result
 }
 
@@ -68,22 +65,18 @@ fn should_error_if_input_path_is_wrong() -> Result<(), InstanceError> {
         .output()
         .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
 
-    let mut instance = Instance {
-        bin_path: tmp_dir.join("bin"),
-        time_limit: 1.0,
-        memory_limit: 512000,
-        input_path: base_dir.join("input.txt_wrong_path"),
-        output_path: base_dir.join("output.txt"),
-        runner_path: base_dir.join("run_cpp"),
-        ..Default::default()
-    };
+    let mut instance = Instance::new(
+        1.0,
+        512000,
+        tmp_dir.join("bin"),
+        base_dir.join("input_wrong_path"),
+        base_dir.join("run_cpp"),
+    );
 
     let init_result = instance.init();
 
     fs::remove_dir_all(&tmp_dir)
         .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
-
-    instance.cleanup()?;
 
     assert_eq!(
         init_result,
@@ -116,23 +109,18 @@ fn should_error_if_output_path_is_wrong() -> Result<(), InstanceError> {
         .output()
         .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
 
-    let mut instance = Instance {
-        bin_path: tmp_dir.join("bin_wrong_path"),
-        time_limit: 1.0,
-        memory_limit: 512000,
-        input_path: base_dir.join("input.txt"),
-        output_path: base_dir.join("output.txt"),
-        runner_path: base_dir.join("run_cpp"),
-        ..Default::default()
-    };
-
+    let mut instance = Instance::new(
+        1.0,
+        512000,
+        tmp_dir.join("bin_wrong_path"),
+        base_dir.join("input.txt"),
+        base_dir.join("run_cpp"),
+    );
 
     let init_result = instance.init();
 
     fs::remove_dir_all(&tmp_dir)
         .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
-
-    instance.cleanup()?;
 
     assert_eq!(
         init_result,
@@ -165,22 +153,18 @@ fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
         .output()
         .map_err(|_| InstanceError::PermissionError("Unable to compile files"))?;
 
-    let mut instance = Instance {
-        bin_path: tmp_dir.join("bin"),
-        time_limit: 1.0,
-        memory_limit: 512000,
-        input_path: base_dir.join("input.txt"),
-        output_path: base_dir.join("output.txt"),
-        runner_path: base_dir.join("run_cpp_wrong_path"),
-        ..Default::default()
-    };
+    let mut instance = Instance::new(
+        1.0,
+        512000,
+        tmp_dir.join("bin"),
+        base_dir.join("input.txt"),
+        base_dir.join("run_cpp_wrong_path"),
+    );
 
     let init_result = instance.init();
 
     fs::remove_dir_all(&tmp_dir)
         .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
-
-    instance.cleanup()?;
 
     assert_eq!(
         init_result,
@@ -194,16 +178,17 @@ fn should_error_if_runner_path_is_wrong() -> Result<(), InstanceError> {
 #[test]
 fn should_read_log_correctly_when_ok() -> Result<(), InstanceError> {
     dotenv().ok();
-    // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
+    let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
-        .join("instance");
+        .join("instance")
+        .join("log_ok.txt");
+    
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_ok.txt");
+    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp");
 
-    let instance = Instance {
-        log_file: base_dir.join("log_ok.txt"),
-        memory_limit: 4000,
-        ..Default::default()
-    };
+    let mut instance: Instance = Default::default();
+    instance.log_file = tmp_log;
+    instance.memory_limit = 4000;
 
     let result = instance.get_result()?;
 
@@ -218,21 +203,20 @@ fn should_read_log_correctly_when_ok() -> Result<(), InstanceError> {
     Ok(())
 }
 
-
-
 #[test]
-fn should_trigger_when_read_log_with_re() -> Result<(), InstanceError>  {
+fn should_trigger_when_read_log_with_re() -> Result<(), InstanceError> {
     dotenv().ok();
-    // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
+    let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
-        .join("instance");
+        .join("instance")
+        .join("log_re.txt");
+    
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_re.txt");
+    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_re to tmp");
 
-    let instance = Instance {
-        log_file: base_dir.join("log_re.txt"),
-        memory_limit: 1000,
-        ..Default::default()
-    };
+    let mut instance: Instance = Default::default();
+    instance.log_file = tmp_log;
+    instance.memory_limit = 4000;
 
     let result = instance.get_result()?;
 
@@ -251,16 +235,17 @@ fn should_trigger_when_read_log_with_re() -> Result<(), InstanceError>  {
 #[test]
 fn should_trigger_when_read_log_with_to() -> Result<(), InstanceError> {
     dotenv().ok();
-    // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
+    let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
-        .join("instance");
+        .join("instance")
+        .join("log_to.txt");
+    
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_to.txt");
+    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_to to tmp");
 
-    let instance = Instance {
-        log_file: base_dir.join("log_to.txt"),
-        memory_limit: 1000,
-        ..Default::default()
-    };
+    let mut instance: Instance = Default::default();
+    instance.log_file = tmp_log;
+    instance.memory_limit = 4000;
 
     let result = instance.get_result()?;
 
@@ -280,15 +265,17 @@ fn should_trigger_when_read_log_with_to() -> Result<(), InstanceError> {
 fn should_trigger_when_read_log_with_sg() -> Result<(), InstanceError> {
     dotenv().ok();
     // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
+    let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
-        .join("instance");
+        .join("instance")
+        .join("log_sg.txt");
+    
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_sg.txt");
+    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_sg to tmp");
 
-    let instance = Instance {
-        log_file: base_dir.join("log_sg.txt"),
-        memory_limit: 1000,
-        ..Default::default()
-    };
+    let mut instance: Instance = Default::default();
+    instance.log_file = tmp_log;
+    instance.memory_limit = 4000;
 
     let result = instance.get_result()?;
 
@@ -308,15 +295,17 @@ fn should_trigger_when_read_log_with_sg() -> Result<(), InstanceError> {
 fn should_trigger_when_read_log_with_xx() -> Result<(), InstanceError> {
     dotenv().ok();
     // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
+    let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
-        .join("instance");
+        .join("instance")
+        .join("log_xx.txt");
+    
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_xx.txt");
+    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_xx to tmp");
 
-    let instance = Instance {
-        log_file: base_dir.join("log_xx.txt"),
-        memory_limit: 1000,
-        ..Default::default()
-    };
+    let mut instance: Instance = Default::default();
+    instance.log_file = tmp_log;
+    instance.memory_limit = 4000;
 
     let result = instance.get_result()?;
 
@@ -335,15 +324,17 @@ fn should_trigger_when_read_log_with_xx() -> Result<(), InstanceError> {
 fn should_trigger_when_read_log_with_mle() -> Result<(), InstanceError> {
     dotenv().ok();
     // get base directory
-    let base_dir = PathBuf::from(env::current_dir().unwrap())
+    let test_log = PathBuf::from(env::current_dir().unwrap())
         .join("tests")
-        .join("instance");
+        .join("instance")
+        .join("log_ok.txt");
+    
+    let tmp_log = PathBuf::from(get_env("TEMPORARY_PATH")?).join("test_log_mle.txt");
+    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp (MLE)");
 
-    let instance = Instance {
-        log_file: base_dir.join("log_ok.txt"),
-        memory_limit: 1000,
-        ..Default::default()
-    };
+    let mut instance: Instance = Default::default();
+    instance.log_file = tmp_log;
+    instance.memory_limit = 1000;
 
     let result = instance.get_result()?;
 
@@ -380,15 +371,13 @@ fn should_get_tle() -> Result<(), InstanceError> {
         .output()
         .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
 
-    let mut instance = Instance {
-        bin_path: tmp_dir.join("bin"),
-        time_limit: 1.0,
-        memory_limit: 512000,
-        input_path: base_dir.join("input.txt"),
-        output_path: base_dir.join("output.txt"),
-        runner_path: base_dir.join("run_cpp"),
-        ..Default::default()
-    };
+    let mut instance = Instance::new(
+        1.0,
+        512000,
+        tmp_dir.join("bin"),
+        base_dir.join("input.txt"),
+        base_dir.join("run_cpp"),
+    );
 
     let result = || -> Result<InstanceResult, InstanceError> {
         instance.init()?;
@@ -400,13 +389,8 @@ fn should_get_tle() -> Result<(), InstanceError> {
     fs::remove_dir_all(&tmp_dir)
         .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
-    instance.cleanup()?;
-    
-    assert_eq!(
-        result.status,
-        RunVerdict::VerdictTLE
-    );
-    
+    assert_eq!(result.status, RunVerdict::VerdictTLE);
+
     Ok(())
 }
 
@@ -431,15 +415,13 @@ fn should_get_re() -> Result<(), InstanceError> {
         .output()
         .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
 
-    let mut instance = Instance {
-        bin_path: tmp_dir.join("bin"),
-        time_limit: 1.0,
-        memory_limit: 512000,
-        input_path: base_dir.join("input.txt"),
-        output_path: base_dir.join("output.txt"),
-        runner_path: base_dir.join("run_cpp"),
-        ..Default::default()
-    };
+    let mut instance = Instance::new(
+        1.0,
+        512000,
+        tmp_dir.join("bin"),
+        base_dir.join("input.txt"),
+        base_dir.join("run_cpp"),
+    );
 
     let result = || -> Result<InstanceResult, InstanceError> {
         instance.init()?;
@@ -451,13 +433,8 @@ fn should_get_re() -> Result<(), InstanceError> {
     fs::remove_dir_all(&tmp_dir)
         .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
-    instance.cleanup()?;
-    
-    assert_eq!(
-        result.status,
-        RunVerdict::VerdictRE
-    );
-    
+    assert_eq!(result.status, RunVerdict::VerdictRE);
+
     Ok(())
 }
 
@@ -482,15 +459,13 @@ fn should_get_mle() -> Result<(), InstanceError> {
         .output()
         .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
 
-    let mut instance = Instance {
-        bin_path: tmp_dir.join("bin"),
-        time_limit: 1.0,
-        memory_limit: 1,
-        input_path: base_dir.join("input.txt"),
-        output_path: base_dir.join("output.txt"),
-        runner_path: base_dir.join("run_cpp"),
-        ..Default::default()
-    };
+    let mut instance = Instance::new(
+        1.0,
+        1,
+        tmp_dir.join("bin"),
+        base_dir.join("input.txt"),
+        base_dir.join("run_cpp"),
+    );
 
     let result = || -> Result<InstanceResult, InstanceError> {
         instance.init()?;
@@ -502,12 +477,7 @@ fn should_get_mle() -> Result<(), InstanceError> {
     fs::remove_dir_all(&tmp_dir)
         .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
 
-    instance.cleanup()?;
-    
-    assert_eq!(
-        result.status,
-        RunVerdict::VerdictMLE
-    );
-    
+    assert_eq!(result.status, RunVerdict::VerdictMLE);
+
     Ok(())
 }
