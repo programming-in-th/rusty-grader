@@ -358,3 +358,156 @@ fn should_trigger_when_read_log_with_mle() -> Result<(), InstanceError> {
 
     Ok(())
 }
+
+#[test]
+fn should_get_tle() -> Result<(), InstanceError> {
+    dotenv().ok();
+    // get base directory
+    let base_dir = PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance");
+
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("should_get_tle");
+
+    if !tmp_dir.is_dir() {
+        fs::create_dir(&tmp_dir)
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+    }
+
+    Command::new(&base_dir.join("compile_cpp"))
+        .arg(&tmp_dir)
+        .arg(&base_dir.join("a_plus_b_TLE.cpp"))
+        .output()
+        .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
+
+    let mut instance = Instance {
+        bin_path: tmp_dir.join("bin"),
+        time_limit: 1.0,
+        memory_limit: 512000,
+        input_path: base_dir.join("input.txt"),
+        output_path: base_dir.join("output.txt"),
+        runner_path: base_dir.join("run_cpp"),
+        ..Default::default()
+    };
+
+    let result = || -> Result<InstanceResult, InstanceError> {
+        instance.init()?;
+        instance.run()?;
+        instance.get_result()
+    }()?;
+
+    // clean up
+    fs::remove_dir_all(&tmp_dir)
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+
+    instance.cleanup()?;
+    
+    assert_eq!(
+        result.status,
+        RunVerdict::VerdictTLE
+    );
+    
+    Ok(())
+}
+
+#[test]
+fn should_get_re() -> Result<(), InstanceError> {
+    dotenv().ok();
+    // get base directory
+    let base_dir = PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance");
+
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("should_get_re");
+
+    if !tmp_dir.is_dir() {
+        fs::create_dir(&tmp_dir)
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+    }
+
+    Command::new(&base_dir.join("compile_cpp"))
+        .arg(&tmp_dir)
+        .arg(&base_dir.join("a_plus_b_RE.cpp"))
+        .output()
+        .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
+
+    let mut instance = Instance {
+        bin_path: tmp_dir.join("bin"),
+        time_limit: 1.0,
+        memory_limit: 512000,
+        input_path: base_dir.join("input.txt"),
+        output_path: base_dir.join("output.txt"),
+        runner_path: base_dir.join("run_cpp"),
+        ..Default::default()
+    };
+
+    let result = || -> Result<InstanceResult, InstanceError> {
+        instance.init()?;
+        instance.run()?;
+        instance.get_result()
+    }()?;
+
+    // clean up
+    fs::remove_dir_all(&tmp_dir)
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+
+    instance.cleanup()?;
+    
+    assert_eq!(
+        result.status,
+        RunVerdict::VerdictRE
+    );
+    
+    Ok(())
+}
+
+#[test]
+fn should_get_mle() -> Result<(), InstanceError> {
+    dotenv().ok();
+    // get base directory
+    let base_dir = PathBuf::from(env::current_dir().unwrap())
+        .join("tests")
+        .join("instance");
+
+    let tmp_dir = PathBuf::from(get_env("TEMPORARY_PATH")?).join("should_get_mle");
+
+    if !tmp_dir.is_dir() {
+        fs::create_dir(&tmp_dir)
+            .map_err(|_| InstanceError::PermissionError("Unable to create tmp directory"))?;
+    }
+
+    Command::new(&base_dir.join("compile_cpp"))
+        .arg(&tmp_dir)
+        .arg(&base_dir.join("a_plus_b.cpp"))
+        .output()
+        .map_err(|_| InstanceError::PermissionError("Unable to compile file"))?;
+
+    let mut instance = Instance {
+        bin_path: tmp_dir.join("bin"),
+        time_limit: 1.0,
+        memory_limit: 1,
+        input_path: base_dir.join("input.txt"),
+        output_path: base_dir.join("output.txt"),
+        runner_path: base_dir.join("run_cpp"),
+        ..Default::default()
+    };
+
+    let result = || -> Result<InstanceResult, InstanceError> {
+        instance.init()?;
+        instance.run()?;
+        instance.get_result()
+    }()?;
+
+    // clean up
+    fs::remove_dir_all(&tmp_dir)
+        .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+
+    instance.cleanup()?;
+    
+    assert_eq!(
+        result.status,
+        RunVerdict::VerdictMLE
+    );
+    
+    Ok(())
+}
