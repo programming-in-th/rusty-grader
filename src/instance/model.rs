@@ -200,13 +200,8 @@ impl Instance {
 
 #[cfg(test)]
 mod tests {
-    use crate::instance::error::InstanceError;
-    use crate::instance::model::{get_env, Instance, InstanceResult, RunVerdict};
+    use super::*;
     use dotenv::dotenv;
-    use std::env;
-    use std::fs;
-    use std::path::PathBuf;
-    use std::process::Command;
 
     #[test]
     fn initialize_instance() -> Result<(), InstanceError> {
