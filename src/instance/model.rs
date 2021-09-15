@@ -138,7 +138,7 @@ impl Instance {
                 .map_err(|_| {
                     InstanceError::PermissionError("Unable to run isolate --init command.")
                 })?;
-
+            
             if box_path.status.success() {
                 let mut box_path = String::from_utf8(box_path.stdout).unwrap();
                 box_path = box_path.strip_suffix("\n").unwrap_or(&box_path).to_string();
@@ -235,7 +235,6 @@ mod tests {
         };
 
         let result = || -> Result<(), InstanceError> {
-            instance.cleanup()?;
             instance.init()?;
             instance.run()?;
             Ok(())
@@ -280,8 +279,6 @@ mod tests {
             runner_path: base_dir.join("run_cpp"),
             ..Default::default()
         };
-
-        instance.cleanup()?;
 
         let init_result = instance.init();
 
@@ -331,12 +328,13 @@ mod tests {
             ..Default::default()
         };
 
-        instance.cleanup()?;
 
         let init_result = instance.init();
 
         fs::remove_dir_all(&tmp_dir)
             .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+
+        instance.cleanup()?;
 
         assert_eq!(
             init_result,
@@ -379,12 +377,12 @@ mod tests {
             ..Default::default()
         };
 
-        instance.cleanup()?;
-
         let init_result = instance.init();
 
         fs::remove_dir_all(&tmp_dir)
             .map_err(|_| InstanceError::PermissionError("Unable to remove tmp directory"))?;
+
+        instance.cleanup()?;
 
         assert_eq!(
             init_result,
@@ -405,7 +403,6 @@ mod tests {
 
         let instance = Instance {
             log_file: base_dir.join("log_ok.txt"),
-            time_limit: 1.0,
             memory_limit: 4000,
             ..Default::default()
         };
@@ -433,7 +430,6 @@ mod tests {
 
         let instance = Instance {
             log_file: base_dir.join("log_ok.txt"),
-            time_limit: 1.0,
             memory_limit: 1000,
             ..Default::default()
         };
