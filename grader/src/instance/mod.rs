@@ -29,6 +29,7 @@ pub struct Instance {
     pub time_limit: f64,
     pub memory_limit: u64,
     pub input_path: PathBuf,
+    pub output_path: PathBuf,
     pub runner_path: PathBuf,
 }
 
@@ -205,6 +206,12 @@ impl Instance {
             .output()
             .map_err(|_| InstanceError::PermissionError("Unable to run isolate."))?;
 
-        self.get_result()
+        let result = self.get_result()?;
+        if result.status == RunVerdict::VerdictOK {
+            fs::copy(&self.box_path.join("output"), &self.output_path).map_err(|_| {
+                InstanceError::PermissionError("Unable to copy output file into outside directory")
+            })?; 
+        }
+        Ok(result)
     }
 }

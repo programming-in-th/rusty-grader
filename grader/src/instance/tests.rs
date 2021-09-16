@@ -50,6 +50,7 @@ fn should_complete_initialize_instance() {
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
         input_path: base_dir.join("input.txt"),
+        output_path: tmp_dir.0.clone().join("output.txt"),
         runner_path: base_dir.join("run_cpp")
     };
 
@@ -310,6 +311,7 @@ fn should_get_ok() {
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
         input_path: base_dir.join("input.txt"),
+        output_path: tmp_dir.0.clone().join("output.txt"),
         runner_path: base_dir.join("run_cpp")
     };
 
