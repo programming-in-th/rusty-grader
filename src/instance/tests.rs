@@ -298,6 +298,28 @@ fn should_trigger_when_read_log_with_mle() {
 }
 
 #[test]
+fn should_get_ok() {
+    dotenv().ok();
+
+    let base_dir = get_base_dir();
+    let tmp_dir = TempDir::new("should_get_ok");
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+
+    let mut instance = instance! {
+        time_limit: 1.0,
+        memory_limit: 512000,
+        bin_path: tmp_dir.0.clone().join("bin"),
+        input_path: base_dir.join("input.txt"),
+        runner_path: base_dir.join("run_cpp")
+    };
+
+    instance.init().expect("Should init without error");
+    let result = instance.run().expect("Should run without error");
+
+    assert_eq!(result.status, RunVerdict::VerdictOK);
+}
+
+#[test]
 fn should_get_tle() {
     dotenv().ok();
 
