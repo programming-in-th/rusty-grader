@@ -31,7 +31,6 @@ pub struct Instance {
     pub runner_path: PathBuf,
 }
 
-
 impl Drop for Instance {
     fn drop(&mut self) {
         Command::new(get_env("ISOLATE_PATH").unwrap())
@@ -64,18 +63,18 @@ impl Default for RunVerdict {
 
 #[derive(Default, PartialEq, Debug)]
 pub struct InstanceResult {
-    pub status: RunVerdict,
-    pub time_usage: f64,
-    pub memory_usage: u64,
+    status: RunVerdict,
+    time_usage: f64,
+    memory_usage: u64,
 }
 
-pub fn get_env(name: &'static str) -> Result<String, InstanceError> {
+fn get_env(name: &'static str) -> Result<String, InstanceError> {
     env::var(name)
         .map_err(|_| InstanceError::EnvironmentError(format!("cannot get {} from env", name)))
 }
 
 impl Instance {
-    pub fn get_arguments(&self) -> Result<Vec<String>, InstanceError> {
+    fn get_run_arguments(&self) -> Result<Vec<String>, InstanceError> {
         let mut args: Vec<String> = vec![
             String::from("-b"),
             self.box_id.to_string(),
@@ -107,7 +106,7 @@ impl Instance {
         Ok(args)
     }
 
-    pub fn check_root_permission(&self) -> Result<(), InstanceError> {
+    fn check_root_permission(&self) -> Result<(), InstanceError> {
         let permission_result = Command::new("id").arg("-u").output();
         match permission_result {
             Ok(output) => {
@@ -199,7 +198,7 @@ impl Instance {
     }
 
     pub fn run(&self) -> Result<InstanceResult, InstanceError> {
-        let args = self.get_arguments()?;
+        let args = self.get_run_arguments()?;
         Command::new(get_env("ISOLATE_PATH")?)
             .args(args)
             .output()
