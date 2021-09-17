@@ -7,6 +7,16 @@ macro_rules! instance {
     }}
 }
 
+macro_rules! combine_argument {
+    ($($arg:expr),*) => {{
+        let mut args = Vec::new();
+        $(
+            args.push(format!("{}", $arg));
+        )*
+        args
+    }}
+}
+
 #[cfg(test)]
 #[macro_use]
 mod tests;
@@ -74,32 +84,31 @@ fn get_env(name: &'static str) -> String {
 
 impl Instance {
     fn get_run_arguments(&self) -> Vec<String> {
-        let mut args: Vec<String> = vec![
-            String::from("-b"),
+        combine_argument![
+            "-b",
             self.box_id.to_string(),
-            String::from("-M"),
+            "-M",
             self.log_file.to_str().unwrap().to_string(),
-            String::from("-t"),
+            "-t",
             self.time_limit.to_string(),
-            String::from("-w"),
+            "-w",
             (self.time_limit + 5.0).to_string(),
-            String::from("-x"),
+            "-x",
             (self.time_limit + 1.0).to_string(),
-            String::from("-i"),
-            String::from("input"),
-            String::from("-o"),
-            String::from("output"),
-            String::from("--run"),
-            String::from("--"),
-            String::from("runner"),
-            String::from("--cg"),
-            String::from("--cg-timing"),
-            String::from("--processes=128"),
+            "-i",
+            "input",
+            "-o",
+            "output",
+            "--run",
+            "--",
+            "runner",
+            "--cg",
+            "--cg-timing",
+            "--processes=128",
             format!("--cg-mem={}", self.memory_limit),
             format!("--dir={}", get_env("ALTERNATIVE_PATH"))
-        ];
-        args
-    }
+        ]
+      }
 
     pub fn get_result(&self) -> io::Result<InstanceResult> {
         let log_content = fs::read_to_string(&self.log_file)?;
