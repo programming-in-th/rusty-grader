@@ -6,3 +6,14 @@ macro_rules! instance {
         instance
     }}
 }
+
+#[macro_export]
+macro_rules! combine_argument {
+    ($($arg:expr),*) => {{
+        let mut args = Vec::new();
+        $(
+            args.push(format!("{}", $arg));
+        )*
+        args
+    }}
+}
