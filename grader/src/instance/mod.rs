@@ -1,8 +1,17 @@
+macro_rules! combine_argument {
+    ($($arg:expr),*) => {{
+        let mut args = Vec::new();
+        $(
+            args.push(format!("{}", $arg));
+        )*
+        args
+    }}
+}
+
+use std::{env, fs, io, path::PathBuf, process::Command};
+
 #[cfg(test)]
 mod tests;
-
-use crate::combine_argument;
-use std::{env, fs, io, path::PathBuf, process::Command};
 
 #[derive(Default, Debug, Clone)]
 pub struct Instance {
