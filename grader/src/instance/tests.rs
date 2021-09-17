@@ -325,7 +325,7 @@ fn should_get_tle() {
     compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b_TLE.cpp"));
 
     let mut instance = instance! {
-        time_limit: 1.0,
+        time_limit: 0.1,
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
         input_path: base_dir.join("input.txt"),
