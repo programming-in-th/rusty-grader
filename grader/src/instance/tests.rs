@@ -12,7 +12,7 @@ impl Drop for TempDir {
 
 impl TempDir {
     fn new(tmp_name: &'static str) -> Self {
-        let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH").unwrap()).join(tmp_name);
+        let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(tmp_name);
         fs::create_dir(&tmp_path).expect("Unable to remove tmp directory");
         Self(tmp_path)
     }
@@ -25,7 +25,7 @@ fn get_base_dir() -> PathBuf {
 }
 
 fn get_tmp_path() -> PathBuf {
-    PathBuf::from(get_env("TEMPORARY_PATH").unwrap())
+    PathBuf::from(get_env("TEMPORARY_PATH"))
 }
 
 fn compile_cpp(tmp_dir: &PathBuf, prog_file: &PathBuf) {
@@ -76,10 +76,8 @@ fn should_error_if_input_path_is_wrong() {
     let init_result = instance.init();
 
     assert_eq!(
-        init_result,
-        Err(InstanceError::PermissionError(
-            "Unable to copy input file into box directory"
-        ))
+        init_result.unwrap_err().kind(),
+        io::ErrorKind::NotFound
     );
 }
 
@@ -103,10 +101,8 @@ fn should_error_if_output_path_is_wrong() {
     let init_result = instance.init();
 
     assert_eq!(
-        init_result,
-        Err(InstanceError::PermissionError(
-            "Unable to copy user exec file into box directory"
-        ))
+        init_result.unwrap_err().kind(),
+        io::ErrorKind::NotFound
     );
 }
 
@@ -130,10 +126,8 @@ fn should_error_if_runner_path_is_wrong() {
     let init_result = instance.init();
 
     assert_eq!(
-        init_result,
-        Err(InstanceError::PermissionError(
-            "Unable to copy runner script into box directory"
-        ))
+        init_result.unwrap_err().kind(),
+        io::ErrorKind::NotFound
     );
 }
 

@@ -1,22 +1,20 @@
 #[macro_export]
 macro_rules! instance {
-  ($($arg:ident: $val:expr),*) => {{
-      let mut instance: Instance = Default::default();
-      $(instance.$arg = $val;)*
-      instance
-  }}
+    ($($arg:ident: $val:expr),*) => {{
+        let mut instance: Instance = Default::default();
+        $(instance.$arg = $val;)*
+        instance
+    }}
 }
 
 #[cfg(test)]
 #[macro_use]
 mod tests;
 
-mod error;
-
-use error::InstanceError;
 use std::{
     env, fs,
-    path::{Path, PathBuf},
+    io,
+    path::PathBuf,
     process::Command,
 };
 
@@ -35,7 +33,7 @@ pub struct Instance {
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        Command::new(get_env("ISOLATE_PATH").unwrap())
+        Command::new(get_env("ISOLATE_PATH"))
             .args(&["--cleanup", "--cg", "-b"])
             .arg(self.box_id.to_string())
             .output()
@@ -70,13 +68,12 @@ pub struct InstanceResult {
     memory_usage: u64,
 }
 
-fn get_env(name: &'static str) -> Result<String, InstanceError> {
-    env::var(name)
-        .map_err(|_| InstanceError::EnvironmentError(format!("cannot get {} from env", name)))
+fn get_env(name: &'static str) -> String {
+    env::var(name).unwrap()
 }
 
 impl Instance {
-    fn get_run_arguments(&self) -> Result<Vec<String>, InstanceError> {
+    fn get_run_arguments(&self) -> Vec<String> {
         let mut args: Vec<String> = vec![
             String::from("-b"),
             self.box_id.to_string(),
@@ -99,37 +96,13 @@ impl Instance {
             String::from("--cg-timing"),
             String::from("--processes=128"),
             format!("--cg-mem={}", self.memory_limit),
+            format!("--dir={}", get_env("ALTERNATIVE_PATH"))
         ];
-
-        if Path::new(&get_env("ALTERNATIVE_PATH")?).is_dir() {
-            args.push(format!("--dir={}", get_env("ALTERNATIVE_PATH")?));
-        }
-
-        Ok(args)
+        args
     }
 
-    fn check_root_permission(&self) -> Result<(), InstanceError> {
-        let permission_result = Command::new("id").arg("-u").output();
-        match permission_result {
-            Ok(output) => {
-                let output_string = String::from_utf8(output.stdout).unwrap();
-                if output_string.trim() == "0" {
-                    Ok(())
-                } else {
-                    Err(InstanceError::PermissionError(
-                        "isolate must be run as root",
-                    ))
-                }
-            }
-            _ => Err(InstanceError::PermissionError(
-                "unable to get current user id",
-            )),
-        }
-    }
-
-    pub fn get_result(&self) -> Result<InstanceResult, InstanceError> {
-        let log_content = fs::read_to_string(&self.log_file)
-            .map_err(|_| InstanceError::PermissionError("Unable to open log file"))?;
+    pub fn get_result(&self) -> io::Result<InstanceResult> {
+        let log_content = fs::read_to_string(&self.log_file)?;
         let mut result: InstanceResult = Default::default();
         for log_line in log_content.split("\n") {
             let args: Vec<&str> = log_line.split(":").collect();
@@ -156,17 +129,13 @@ impl Instance {
         Ok(result)
     }
 
-    pub fn init(&mut self) -> Result<(), InstanceError> {
-        self.check_root_permission()?;
-
+    pub fn init(&mut self) -> io::Result<()> {
         for tmp_box_idx in 1..=1000 {
-            let box_path = Command::new(get_env("ISOLATE_PATH")?)
+            let box_path = Command::new(get_env("ISOLATE_PATH"))
                 .args(&["--init", "--cg", "-b"])
                 .arg(tmp_box_idx.to_string())
                 .output()
-                .map_err(|_| {
-                    InstanceError::PermissionError("Unable to run isolate --init command.")
-                })?;
+                ?;
 
             if box_path.status.success() {
                 let mut box_path = String::from_utf8(box_path.stdout).unwrap();
@@ -177,40 +146,30 @@ impl Instance {
             }
         }
 
-        let tmp_path = get_env("TEMPORARY_PATH")?;
+        let tmp_path = get_env("TEMPORARY_PATH");
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
-        fs::copy(&self.input_path, &self.box_path.join("input")).map_err(|_| {
-            InstanceError::PermissionError("Unable to copy input file into box directory")
-        })?;
+        fs::copy(&self.input_path, &self.box_path.join("input"))?;
 
         fs::copy(
             &self.bin_path,
             &self.box_path.join(self.bin_path.file_name().unwrap()),
-        )
-        .map_err(|_| {
-            InstanceError::PermissionError("Unable to copy user exec file into box directory")
-        })?;
+        )?;
 
-        fs::copy(&self.runner_path, &self.box_path.join("runner")).map_err(|_| {
-            InstanceError::PermissionError("Unable to copy runner script into box directory")
-        })?;
+        fs::copy(&self.runner_path, &self.box_path.join("runner"))?;
 
         Ok(())
     }
 
-    pub fn run(&self) -> Result<InstanceResult, InstanceError> {
-        let args = self.get_run_arguments()?;
-        Command::new(get_env("ISOLATE_PATH")?)
+    pub fn run(&self) -> io::Result<InstanceResult> {
+        let args = self.get_run_arguments();
+        Command::new(get_env("ISOLATE_PATH"))
             .args(args)
-            .output()
-            .map_err(|_| InstanceError::PermissionError("Unable to run isolate."))?;
+            .output()?;
 
         let result = self.get_result()?;
         if result.status == RunVerdict::VerdictOK {
-            fs::copy(&self.box_path.join("output"), &self.output_path).map_err(|_| {
-                InstanceError::PermissionError("Unable to copy output file into outside directory")
-            })?; 
+            fs::copy(&self.box_path.join("output"), &self.output_path)?; 
         }
         Ok(result)
     }
