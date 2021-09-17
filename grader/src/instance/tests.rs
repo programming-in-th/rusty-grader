@@ -1,4 +1,5 @@
 use super::*;
+use crate::instance;
 
 use dotenv::dotenv;
 
@@ -75,10 +76,7 @@ fn should_error_if_input_path_is_wrong() {
     };
     let init_result = instance.init();
 
-    assert_eq!(
-        init_result.unwrap_err().kind(),
-        io::ErrorKind::NotFound
-    );
+    assert_eq!(init_result.unwrap_err().kind(), io::ErrorKind::NotFound);
 }
 
 #[test]
@@ -100,10 +98,7 @@ fn should_error_if_output_path_is_wrong() {
 
     let init_result = instance.init();
 
-    assert_eq!(
-        init_result.unwrap_err().kind(),
-        io::ErrorKind::NotFound
-    );
+    assert_eq!(init_result.unwrap_err().kind(), io::ErrorKind::NotFound);
 }
 
 #[test]
@@ -125,10 +120,7 @@ fn should_error_if_runner_path_is_wrong() {
 
     let init_result = instance.init();
 
-    assert_eq!(
-        init_result.unwrap_err().kind(),
-        io::ErrorKind::NotFound
-    );
+    assert_eq!(init_result.unwrap_err().kind(), io::ErrorKind::NotFound);
 }
 
 #[test]

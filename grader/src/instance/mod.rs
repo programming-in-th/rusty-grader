@@ -1,32 +1,8 @@
-#[macro_export]
-macro_rules! instance {
-    ($($arg:ident: $val:expr),*) => {{
-        let mut instance: Instance = Default::default();
-        $(instance.$arg = $val;)*
-        instance
-    }}
-}
-
-macro_rules! combine_argument {
-    ($($arg:expr),*) => {{
-        let mut args = Vec::new();
-        $(
-            args.push(format!("{}", $arg));
-        )*
-        args
-    }}
-}
-
 #[cfg(test)]
-#[macro_use]
 mod tests;
 
-use std::{
-    env, fs,
-    io,
-    path::PathBuf,
-    process::Command,
-};
+use crate::combine_argument;
+use std::{env, fs, io, path::PathBuf, process::Command};
 
 #[derive(Default, Debug, Clone)]
 pub struct Instance {
@@ -108,7 +84,7 @@ impl Instance {
             format!("--cg-mem={}", self.memory_limit),
             format!("--dir={}", get_env("ALTERNATIVE_PATH"))
         ]
-      }
+    }
 
     pub fn get_result(&self) -> io::Result<InstanceResult> {
         let log_content = fs::read_to_string(&self.log_file)?;
@@ -143,8 +119,7 @@ impl Instance {
             let box_path = Command::new(get_env("ISOLATE_PATH"))
                 .args(&["--init", "--cg", "-b"])
                 .arg(tmp_box_idx.to_string())
-                .output()
-                ?;
+                .output()?;
 
             if box_path.status.success() {
                 let mut box_path = String::from_utf8(box_path.stdout).unwrap();
@@ -172,13 +147,11 @@ impl Instance {
 
     pub fn run(&self) -> io::Result<InstanceResult> {
         let args = self.get_run_arguments();
-        Command::new(get_env("ISOLATE_PATH"))
-            .args(args)
-            .output()?;
+        Command::new(get_env("ISOLATE_PATH")).args(args).output()?;
 
         let result = self.get_result()?;
         if result.status == RunVerdict::VerdictOK {
-            fs::copy(&self.box_path.join("output"), &self.output_path)?; 
+            fs::copy(&self.box_path.join("output"), &self.output_path)?;
         }
         Ok(result)
     }
