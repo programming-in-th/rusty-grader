@@ -17,3 +17,10 @@ macro_rules! combine_argument {
         args
     }}
 }
+
+#[macro_export]
+macro_rules! s {
+    ($arg:expr) => {
+        String::from($arg)
+    };
+}
