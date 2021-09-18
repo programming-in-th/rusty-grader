@@ -15,7 +15,7 @@ fn should_complete_initialize_submission() {
             "#include <cstdio> int main() { int a, b; cin >> a >> b; cout << a+b;}"
         )]
     };
-    
+
     submission.init().expect("Unable to init submission");
 }
 

@@ -1,6 +1,6 @@
 use super::*;
 use crate::instance;
-use crate::utils::{compile_cpp, get_example_dir, get_tmp_path, TempDir};
+use crate::utils::tests::{compile_cpp, get_example_dir, get_tmp_path, TempDir};
 
 use dotenv::dotenv;
 

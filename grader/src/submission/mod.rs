@@ -51,7 +51,7 @@ impl Submission {
 
         self.task_path = get_base_path().join("tasks").join(&self.task_id);
         self.task_manifest = load_yaml(self.task_path.join("manifest.yaml"));
-        // println!("{:#?}", self.task_manifest);
+        
         if self.task_path.join("compile_files").is_dir() {
             let entries = fs::read_dir(self.task_path.join("compile_files"))?;
             for entry in entries {
