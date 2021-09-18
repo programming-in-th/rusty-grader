@@ -23,7 +23,7 @@ pub fn load_yaml(path: PathBuf) -> Yaml {
 #[cfg(test)]
 pub mod tests {
     use crate::utils::get_env;
-    use std::{fs, path::PathBuf, process::Command};
+    use std::{env, fs, path::PathBuf, process::Command};
 
     pub struct TempDir(pub PathBuf);
 
