@@ -19,7 +19,5 @@ jobs:
         run: git submodule update --init --recursive
       - name: Setup environment
         run: sudo sh setup.sh
-      - name: Build package
-        run: cargo build
       - name: Run tests
         run: sudo cargo test --verbose
