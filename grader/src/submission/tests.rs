@@ -1,37 +1,41 @@
 use super::*;
 
-use crate::s;
+use crate::{s, submission};
 use dotenv::dotenv;
 
 #[test]
 fn should_complete_initialize_submission() {
     dotenv().ok();
 
-    let _submission = Submission::new(
-        s!("a_plus_b"),
-        s!("000000"),
-        s!("cpp"),
-        vec![s!(
+    let mut submission = submission! {
+        task_id: s!("a_plus_b"),
+        submission_id: s!("000000"),
+        language: s!("cpp"),
+        code: vec![s!(
             "#include <cstdio> int main() { int a, b; cin >> a >> b; cout << a+b;}"
-        )],
-    );
+        )]
+    };
+    
+    submission.init().expect("Unable to init submission");
 }
 
 #[test]
 fn should_parse_manifest_successfully() {
     dotenv().ok();
 
-    let submission = Submission::new(
-        s!("a_plus_b"),
-        s!("000001"),
-        s!("cpp"),
-        vec![s!(
+    let mut submission = submission! {
+        task_id: s!("a_plus_b"),
+        submission_id: s!("000001"),
+        language: s!("cpp"),
+        code: vec![s!(
             "#include <cstdio> int main() { int a, b; cin >> a >> b; cout << a+b;}"
-        )],
-    );
+        )]
+    };
+
+    submission.init().expect("Unable to init submission");
 
     assert_eq!(
-        submission.get_manifest()["task_id"].as_str().unwrap(),
+        submission.task_manifest["task_id"].as_str().unwrap(),
         "a_plus_b"
     )
 }

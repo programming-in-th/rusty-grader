@@ -1,5 +1,11 @@
-use crate::utils::{get_env, load_yaml};
-use std::{fs, io::Write, path::PathBuf};
+use crate::s;
+use crate::utils::{get_base_path, get_env, load_yaml};
+use std::{
+    fs, io,
+    io::{Error, Write},
+    path::PathBuf,
+    process::Command,
+};
 use yaml_rust::Yaml;
 
 #[cfg(test)]
@@ -10,9 +16,11 @@ pub struct Submission {
     pub task_id: String,
     pub submission_id: String,
     pub language: String,
+    pub code: Vec<String>,
     pub task_manifest: Yaml,
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
+    pub bin_path: PathBuf,
 }
 
 impl Default for Submission {
@@ -21,55 +29,71 @@ impl Default for Submission {
             task_id: Default::default(),
             submission_id: Default::default(),
             language: Default::default(),
+            code: Default::default(),
             task_manifest: Yaml::Null,
             tmp_path: Default::default(),
             task_path: Default::default(),
+            bin_path: Default::default(),
         }
     }
 }
 
 impl Submission {
-    pub fn new(
-        task_id: String,
-        submission_id: String,
-        language: String,
-        code: Vec<String>,
-    ) -> Self {
-        let mut submission: Submission = Default::default();
+    pub fn init(&mut self) -> io::Result<()> {
+        self.tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&self.submission_id);
+        fs::create_dir(&self.tmp_path)?;
 
-        submission.task_id = task_id;
-        submission.submission_id = submission_id;
-        submission.language = language;
-
-        submission.tmp_path =
-            PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission.submission_id);
-        fs::create_dir(&submission.tmp_path).expect("Failed to create temporary");
-
-        for (idx, code) in code.iter().enumerate() {
-            let mut file = fs::File::create(
-                submission
-                    .tmp_path
-                    .join(String::from("code_") + &idx.to_string()),
-            )
-            .unwrap();
-            file.write(code.as_bytes()).expect("Error writing code");
+        for (idx, code) in self.code.iter().enumerate() {
+            let mut file =
+                fs::File::create(self.tmp_path.join(s!("code_") + &idx.to_string())).unwrap();
+            file.write(code.as_bytes())?;
         }
 
-        submission.task_path = PathBuf::from(get_env("BASE_PATH"))
-            .join("tasks")
-            .join(&submission.task_id);
-        submission.task_manifest = load_yaml(submission.task_path.join("manifest.yaml"));
-        // let entries = fs::read_dir(self.task_path.join("compile_files"))?;
-        // for entry in entries {
-        //     let path = entry?;
-        //     fs::copy(&path.path(), self.tmp_path.join(&path.file_name()))?;
-        // }
-
-        submission
+        self.task_path = get_base_path().join("tasks").join(&self.task_id);
+        self.task_manifest = load_yaml(self.task_path.join("manifest.yaml"));
+        // println!("{:#?}", self.task_manifest);
+        if self.task_path.join("compile_files").is_dir() {
+            let entries = fs::read_dir(self.task_path.join("compile_files"))?;
+            for entry in entries {
+                let path = entry?;
+                fs::copy(&path.path(), self.tmp_path.join(&path.file_name()))?;
+            }
+        }
+        Ok(())
     }
 
-    pub fn get_manifest(&self) -> Yaml {
-        self.task_manifest.clone()
+    pub fn compile(&mut self) -> io::Result<()> {
+        let compiler_path = get_base_path()
+            .join("scripts")
+            .join("compile_scripts")
+            .join(&self.language);
+        let mut args = vec![self.tmp_path.clone()];
+        for idx in 0..self.code.len() {
+            args.push(self.tmp_path.join(s!("code_") + &idx.to_string()));
+        }
+        if self.task_manifest["compile_files"][self.language.as_str()].is_array() {
+            for compile_file in self.task_manifest["compile_files"][self.language.as_str()]
+                .as_vec()
+                .unwrap()
+            {
+                args.push(self.task_path.join(compile_file.as_str().unwrap()));
+            }
+        }
+        let compile_output = Command::new(compiler_path).args(args).output()?;
+        let compile_output_args = String::from_utf8(compile_output.stdout)
+            .unwrap()
+            .split("\n")
+            .map(|s| s.to_string())
+            .collect::<Vec<String>>();
+
+        let return_code: i32 = compile_output_args.get(0).unwrap().parse().unwrap();
+
+        if return_code != 0 {
+            return Err(Error::from_raw_os_error(return_code));
+        }
+
+        self.bin_path = PathBuf::from(compile_output_args.get(1).unwrap());
+        Ok(())
     }
 }
 
