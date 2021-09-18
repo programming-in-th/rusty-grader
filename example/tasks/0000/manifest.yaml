@@ -1,0 +1,19 @@
+task_id: "0000"
+default_limit: 
+  time_limit: 1.0
+  memory_limit: 32
+limit:
+  - output_only
+checker: "lcmp"
+grouper: "min"
+groups:
+  - full_score: 20
+    tests: 5
+  - full_score: 40
+    tests: 8
+  - full_score: 40
+    tests: 13
+compile_files:
+  - cpp:
+    - "grader.cpp"
+    - "grader.h"
