@@ -13,7 +13,7 @@ pub fn load_yaml(path: PathBuf) -> Yaml {
 #[cfg(test)]
 pub mod tests {
     use crate::utils::get_env;
-    use std::{env, fs, path::PathBuf, process::Command};
+    use std::{fs, path::PathBuf, process::Command};
 
     pub struct TempDir(pub PathBuf);
 
@@ -31,18 +31,16 @@ pub mod tests {
         }
     }
 
-    pub fn get_base_dir(test_suite: &'static str) -> PathBuf {
-        PathBuf::from(env::current_dir().unwrap())
-            .join("tests")
-            .join(test_suite)
+    pub fn get_base_dir(ext: &'static str) -> PathBuf {
+        PathBuf::from(get_env("BASE_PATH")).join(ext)
     }
 
     pub fn get_tmp_path() -> PathBuf {
         PathBuf::from(get_env("TEMPORARY_PATH"))
     }
 
-    pub fn compile_cpp(base_dir: &'static str, tmp_dir: &PathBuf, prog_file: &PathBuf) {
-        Command::new(&get_base_dir(base_dir).join("compile_cpp"))
+    pub fn compile_cpp(tmp_dir: &PathBuf, prog_file: &PathBuf) {
+        Command::new(&get_base_dir("scripts").join("compile_scripts").join("cpp"))
             .arg(&tmp_dir)
             .arg(&prog_file)
             .output()

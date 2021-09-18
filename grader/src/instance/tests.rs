@@ -8,18 +8,18 @@ use dotenv::dotenv;
 fn should_complete_initialize_instance() {
     dotenv().ok();
 
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("initialize_instance");
 
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
-        input_path: base_dir.join("input.txt"),
+        input_path: get_base_dir("tasks").join("a_plus_b").join("testcases").join("1.in"),
         output_path: tmp_dir.0.clone().join("output.txt"),
-        runner_path: base_dir.join("run_cpp")
+        runner_path: get_base_dir("scripts").join("runner_scripts").join("cpp")
     };
 
     instance.init().expect("Should run init without error");
@@ -29,10 +29,10 @@ fn should_complete_initialize_instance() {
 fn should_error_if_input_path_is_wrong() {
     dotenv().ok();
 
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("test_input_path_is_wrong");
 
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
@@ -50,16 +50,16 @@ fn should_error_if_input_path_is_wrong() {
 fn should_error_if_output_path_is_wrong() {
     dotenv().ok();
 
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("test_output_path_is_wrong");
 
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin_wrong_path"),
-        input_path: base_dir.join("input.txt"),
+        input_path: get_base_dir("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: base_dir.join("run_cpp")
     };
 
@@ -72,16 +72,16 @@ fn should_error_if_output_path_is_wrong() {
 fn should_error_if_runner_path_is_wrong() {
     dotenv().ok();
     // get base directory
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("test_runner_path_is_wrong");
 
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
-        input_path: base_dir.join("input.txt"),
+        input_path: get_base_dir("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: base_dir.join("run_cpp_wrong_path")
     };
 
@@ -94,7 +94,7 @@ fn should_error_if_runner_path_is_wrong() {
 fn should_read_log_correctly_when_ok() {
     dotenv().ok();
 
-    let test_log = get_base_dir("instance").join("log_ok.txt");
+    let test_log = get_base_dir("etc").join("log_ok.txt");
     let tmp_log = get_tmp_path().join("test_log_ok.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp");
 
@@ -121,7 +121,7 @@ fn should_read_log_correctly_when_ok() {
 fn should_trigger_when_read_log_with_re() {
     dotenv().ok();
 
-    let test_log = get_base_dir("instance").join("log_re.txt");
+    let test_log = get_base_dir("etc").join("log_re.txt");
     let tmp_log = get_tmp_path().join("test_log_re.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_re to tmp");
 
@@ -148,7 +148,7 @@ fn should_trigger_when_read_log_with_re() {
 fn should_trigger_when_read_log_with_to() {
     dotenv().ok();
 
-    let test_log = get_base_dir("instance").join("log_to.txt");
+    let test_log = get_base_dir("etc").join("log_to.txt");
     let tmp_log = get_tmp_path().join("test_log_to.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_to to tmp");
 
@@ -175,7 +175,7 @@ fn should_trigger_when_read_log_with_to() {
 fn should_trigger_when_read_log_with_sg() {
     dotenv().ok();
 
-    let test_log = get_base_dir("instance").join("log_sg.txt");
+    let test_log = get_base_dir("etc").join("log_sg.txt");
     let tmp_log = get_tmp_path().join("test_log_sg.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_sg to tmp");
 
@@ -202,7 +202,7 @@ fn should_trigger_when_read_log_with_sg() {
 fn should_trigger_when_read_log_with_xx() {
     dotenv().ok();
 
-    let test_log = get_base_dir("instance").join("log_xx.txt");
+    let test_log = get_base_dir("etc").join("log_xx.txt");
     let tmp_log = get_tmp_path().join("test_log_xx.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_xx to tmp");
 
@@ -228,7 +228,7 @@ fn should_trigger_when_read_log_with_xx() {
 fn should_trigger_when_read_log_with_mle() {
     dotenv().ok();
 
-    let test_log = get_base_dir("instance").join("log_ok.txt");
+    let test_log = get_base_dir("etc").join("log_ok.txt");
     let tmp_log = get_tmp_path().join("test_log_mle.txt");
     fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp (MLE)");
 
@@ -255,17 +255,17 @@ fn should_trigger_when_read_log_with_mle() {
 fn should_get_ok() {
     dotenv().ok();
 
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("should_get_ok");
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
-        input_path: base_dir.join("input.txt"),
+        input_path: get_base_dir("tasks").join("a_plus_b").join("testcases").join("1.in"),
         output_path: tmp_dir.0.clone().join("output.txt"),
-        runner_path: base_dir.join("run_cpp")
+        runner_path: get_base_dir("scripts").join("runner_scripts").join("cpp")
     };
 
     instance.init().expect("Should init without error");
@@ -278,17 +278,17 @@ fn should_get_ok() {
 fn should_get_tle() {
     dotenv().ok();
 
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("should_get_tle");
 
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b_TLE.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b_TLE.cpp"));
 
     let mut instance = instance! {
         time_limit: 0.1,
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
-        input_path: base_dir.join("input.txt"),
-        runner_path: base_dir.join("run_cpp")
+        input_path: get_base_dir("tasks").join("a_plus_b").join("testcases").join("1.in"),
+        runner_path: get_base_dir("scripts").join("runner_scripts").join("cpp")
     };
 
     instance.init().expect("Should init without error");
@@ -301,17 +301,17 @@ fn should_get_tle() {
 fn should_get_re() {
     dotenv().ok();
 
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("should_get_re");
 
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b_RE.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b_RE.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
         bin_path: tmp_dir.0.clone().join("bin"),
-        input_path: base_dir.join("input.txt"),
-        runner_path: base_dir.join("run_cpp")
+        input_path: get_base_dir("tasks").join("a_plus_b").join("testcases").join("1.in"),
+        runner_path: get_base_dir("scripts").join("runner_scripts").join("cpp")
     };
 
     instance.init().expect("Should init without error");
@@ -324,17 +324,17 @@ fn should_get_re() {
 fn should_get_mle() {
     dotenv().ok();
 
-    let base_dir = get_base_dir("instance");
+    let base_dir = get_base_dir("etc");
     let tmp_dir = TempDir::new("should_get_mle");
 
-    compile_cpp("instance", &tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 1,
         bin_path: tmp_dir.0.clone().join("bin"),
-        input_path: base_dir.join("input.txt"),
-        runner_path: base_dir.join("run_cpp")
+        input_path: get_base_dir("tasks").join("a_plus_b").join("testcases").join("1.in"),
+        runner_path: get_base_dir("scripts").join("runner_scripts").join("cpp")
     };
 
     instance.init().expect("Should init without error");
