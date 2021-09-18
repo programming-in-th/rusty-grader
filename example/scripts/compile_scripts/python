@@ -1,0 +1,37 @@
+#!/usr/bin/python3
+import os
+import subprocess
+import sys
+
+base_dir = sys.argv[1]
+source_file = sys.argv[2]
+
+f = open(os.path.join(base_dir, "compileMsg"), "w")
+
+compile_capture = subprocess.run(
+    ['python3', '-m', 'compileall', source_file, '-b'],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT)
+
+f.write(compile_capture.stdout.decode("utf-8") + "\n")
+if compile_capture.returncode != 0:
+    print(1)
+    f.close()
+    sys.exit(0)
+
+mv_capture = subprocess.run(
+    ['mv', source_file + 'c',
+     os.path.join(base_dir, 'bin')],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT)
+
+f.write(mv_capture.stdout.decode("utf-8") + "\n")
+if mv_capture.returncode != 0:
+    print(1)
+    f.close()
+    sys.exit(0)
+
+f.close()
+
+print(0)
+print(os.path.join(base_dir, 'bin'))

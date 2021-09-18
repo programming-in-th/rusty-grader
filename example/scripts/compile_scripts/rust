@@ -9,10 +9,8 @@ for i in range(2, len(sys.argv)):
     compile_files.append(sys.argv[i])
 
 output_path = os.path.join(base_dir, "bin")
-cmd = [
-    "/usr/bin/c++", "--std=c++14", "-O2", "-lm", "-static", "-DEVAL",
-    *compile_files, "-o", output_path
-]
+# NOTE: rustc only accepts the .rs file containing main.rs so make sure it is at position 0
+cmd = ["/usr/bin/rustc", "-O", "-o", output_path, compile_files[0]]
 
 capture = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 
