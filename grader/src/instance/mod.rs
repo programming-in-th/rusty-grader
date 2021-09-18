@@ -1,5 +1,6 @@
 use crate::combine_argument;
-use std::{env, fs, io, path::PathBuf, process::Command};
+use crate::utils::get_env;
+use std::{fs, io, path::PathBuf, process::Command};
 
 #[cfg(test)]
 mod tests;
@@ -52,10 +53,6 @@ pub struct InstanceResult {
     status: RunVerdict,
     time_usage: f64,
     memory_usage: u64,
-}
-
-fn get_env(name: &'static str) -> String {
-    env::var(name).unwrap()
 }
 
 impl Instance {
