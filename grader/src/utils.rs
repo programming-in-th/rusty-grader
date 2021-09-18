@@ -31,7 +31,7 @@ pub mod tests {
         }
     }
 
-    pub fn get_base_dir(ext: &'static str) -> PathBuf {
+    pub fn get_example_dir(ext: &'static str) -> PathBuf {
         PathBuf::from(get_env("BASE_PATH")).join(ext)
     }
 
@@ -40,10 +40,14 @@ pub mod tests {
     }
 
     pub fn compile_cpp(tmp_dir: &PathBuf, prog_file: &PathBuf) {
-        Command::new(&get_base_dir("scripts").join("compile_scripts").join("cpp"))
-            .arg(&tmp_dir)
-            .arg(&prog_file)
-            .output()
-            .expect("Unable to compile file");
+        Command::new(
+            &get_example_dir("scripts")
+                .join("compile_scripts")
+                .join("cpp"),
+        )
+        .arg(&tmp_dir)
+        .arg(&prog_file)
+        .output()
+        .expect("Unable to compile file");
     }
 }
