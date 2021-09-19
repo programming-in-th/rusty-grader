@@ -4,6 +4,8 @@ green=$(tput setaf 2)
 blue=$(tput setaf 4)
 normal=$(tput sgr0)
 
+echo "${green}Cloning Submodule${normal}"
+git submodule update --init --recursive
 
 echo "${green}Setting up isolate's package${normal}"
 apt install make gcc libcap-dev
@@ -24,7 +26,6 @@ echo "${green}Setting up C++ compiler and Rust's cargo${normal}"
 apt install g++ cargo
 
 echo "${green}Compiling checkers${normal}"
-git submodule update --init --recursive
 
 mkdir -p example/scripts/checkers
 
