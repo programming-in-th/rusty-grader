@@ -1,0 +1,11 @@
+#!/usr/bin/python3
+import sys
+
+full_score = float(sys.argv[1])
+score = sys.argv[2:]
+
+result = 0
+for i in score:
+    cs = int(i)
+    result += cs
+print(result * full_score / len(score) / 100)

@@ -1,0 +1,13 @@
+#!/usr/bin/python3
+import sys
+
+full_score = float(sys.argv[1])
+score = sys.argv[2:]
+
+result = -1
+
+for i in score:
+    cs = int(i)
+    if result == -1 or cs < result:
+        result = cs
+print(result * full_score / 100)
