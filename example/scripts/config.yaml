@@ -1,0 +1,7 @@
+language:
+  - id: "cpp"
+    extension: "cpp"
+  - id: "python"
+    extension: "py"
+  - id: "rust"
+    extension: "rs"
