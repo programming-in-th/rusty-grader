@@ -1,19 +1,22 @@
 use super::*;
 
+use crate::utils::tests::get_example_dir;
 use crate::{s, submission};
 use dotenv::dotenv;
+use std::fs;
 
 #[test]
 fn should_complete_initialize_submission() {
     dotenv().ok();
 
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
+        .expect("Unable to read code from example dir");
+
     let mut submission = submission! {
         task_id: s!("a_plus_b"),
         submission_id: s!("000000"),
         language: s!("cpp"),
-        code: vec![s!(
-            "#include <cstdio> int main() { int a, b; cin >> a >> b; cout << a+b;}"
-        )]
+        code: vec![code.clone()]
     };
 
     submission.init().expect("Unable to init submission");
@@ -23,13 +26,14 @@ fn should_complete_initialize_submission() {
 fn should_parse_manifest_successfully() {
     dotenv().ok();
 
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
+        .expect("Unable to read code from example dir");
+
     let mut submission = submission! {
         task_id: s!("a_plus_b"),
         submission_id: s!("000001"),
         language: s!("cpp"),
-        code: vec![s!(
-            "#include <cstdio> int main() { int a, b; cin >> a >> b; cout << a+b;}"
-        )]
+        code: vec![code.clone()]
     };
 
     submission.init().expect("Unable to init submission");
@@ -38,4 +42,22 @@ fn should_parse_manifest_successfully() {
         submission.task_manifest["task_id"].as_str().unwrap(),
         "a_plus_b"
     )
+}
+
+#[test]
+fn should_compile_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
+        .expect("Unable to read code from example dir");
+
+    let mut submission = submission! {
+        task_id: s!("a_plus_b"),
+        submission_id: s!("000002"),
+        language: s!("cpp"),
+        code: vec![code.clone()]
+    };
+
+    submission.init().expect("Unable to init submission");
+    submission.compile().expect("Unable to compile submission");
 }
