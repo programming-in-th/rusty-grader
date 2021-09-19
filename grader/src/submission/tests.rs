@@ -45,7 +45,7 @@ fn should_parse_manifest_successfully() {
 }
 
 #[test]
-fn should_compile_successfully() {
+fn should_compile_cpp_successfully() {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
@@ -55,6 +55,24 @@ fn should_compile_successfully() {
         task_id: s!("a_plus_b"),
         submission_id: s!("000002"),
         language: s!("cpp"),
+        code: vec![code.clone()]
+    };
+
+    submission.init().expect("Unable to init submission");
+    submission.compile().expect("Unable to compile submission");
+}
+
+#[test]
+fn should_compile_python_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py"))
+        .expect("Unable to read code from example dir");
+
+    let mut submission = submission! {
+        task_id: s!("a_plus_b"),
+        submission_id: s!("000003"),
+        language: s!("python"),
         code: vec![code.clone()]
     };
 

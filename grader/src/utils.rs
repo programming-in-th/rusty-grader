@@ -24,7 +24,7 @@ pub fn get_code_extension(language: &str) -> String {
     let config = load_yaml(get_base_path().join("scripts").join("config.yaml"));
 
     for lang in config["language"].as_vec().unwrap() {
-        if Some(language) == lang["extension"].as_str() {
+        if Some(language) == lang["id"].as_str() {
             return lang["extension"].as_str().unwrap().to_owned();
         }
     }
