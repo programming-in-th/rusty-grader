@@ -1,5 +1,4 @@
-use crate::s;
-use crate::utils::{get_base_path, get_env, load_yaml};
+use crate::utils::{get_base_path, get_code_extension, get_env, load_yaml};
 use std::{
     fs, io,
     io::{Error, Write},
@@ -17,6 +16,7 @@ pub struct Submission {
     pub submission_id: String,
     pub language: String,
     pub code: Vec<String>,
+    pub code_path: Vec<PathBuf>,
     pub task_manifest: Yaml,
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
@@ -30,6 +30,7 @@ impl Default for Submission {
             submission_id: Default::default(),
             language: Default::default(),
             code: Default::default(),
+            code_path: Default::default(),
             task_manifest: Yaml::Null,
             tmp_path: Default::default(),
             task_path: Default::default(),
@@ -43,15 +44,20 @@ impl Submission {
         self.tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&self.submission_id);
         fs::create_dir(&self.tmp_path)?;
 
+        let extension = get_code_extension(&self.language);
         for (idx, code) in self.code.iter().enumerate() {
-            let mut file =
-                fs::File::create(self.tmp_path.join(s!("code_") + &idx.to_string())).unwrap();
+            let code_path = self
+                .tmp_path
+                .join(format!("code_{}.{}", &idx.to_string(), &extension));
+            let mut file = fs::File::create(&code_path)?;
             file.write(code.as_bytes())?;
+
+            self.code_path.push(code_path.clone());
         }
 
         self.task_path = get_base_path().join("tasks").join(&self.task_id);
         self.task_manifest = load_yaml(self.task_path.join("manifest.yaml"));
-        
+
         if self.task_path.join("compile_files").is_dir() {
             let entries = fs::read_dir(self.task_path.join("compile_files"))?;
             for entry in entries {
@@ -67,10 +73,14 @@ impl Submission {
             .join("scripts")
             .join("compile_scripts")
             .join(&self.language);
+
         let mut args = vec![self.tmp_path.clone()];
-        for idx in 0..self.code.len() {
-            args.push(self.tmp_path.join(s!("code_") + &idx.to_string()));
-        }
+        args = args
+            .iter()
+            .cloned()
+            .chain(self.code_path.iter().cloned())
+            .collect();
+
         if self.task_manifest["compile_files"][self.language.as_str()].is_array() {
             for compile_file in self.task_manifest["compile_files"][self.language.as_str()]
                 .as_vec()
@@ -79,6 +89,7 @@ impl Submission {
                 args.push(self.task_path.join(compile_file.as_str().unwrap()));
             }
         }
+
         let compile_output = Command::new(compiler_path).args(args).output()?;
         let compile_output_args = String::from_utf8(compile_output.stdout)
             .unwrap()

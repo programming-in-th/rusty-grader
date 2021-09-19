@@ -20,6 +20,18 @@ pub fn load_yaml(path: PathBuf) -> Yaml {
     YamlLoader::load_from_str(&file).expect("Unable to parse yaml file")[0].clone()
 }
 
+pub fn get_code_extension(language: &str) -> String {
+    let config = load_yaml(get_base_path().join("scripts").join("config.yaml"));
+
+    for lang in config["language"].as_vec().unwrap() {
+        if Some(language) == lang["extension"].as_str() {
+            return lang["extension"].as_str().unwrap().to_owned();
+        }
+    }
+
+    "".to_string()
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::utils::get_env;
