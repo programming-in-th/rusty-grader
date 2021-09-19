@@ -1,5 +1,11 @@
 #!/bin/sh
-tput setaf 2; echo "Setting up isolate's package"
+
+green=$(tput setaf 2)
+blue=$(tput setaf 4)
+normal=$(tput sgr0)
+
+
+echo "${green}Setting up isolate's package${normal}"
 apt install make gcc libcap-dev
 
 tput setaf 2; echo "Setting up isolate..."
@@ -14,10 +20,10 @@ cp isolate /usr/local/bin/isolate
 cp default.cf /usr/local/etc/isolate
 cd ..
 
-tput setaf 2; echo "Setting up C++ compiler and Rust's cargo"
+echo "${green}Setting up C++ compiler and Rust's cargo${normal}"
 apt install g++ cargo
 
-tput setaf 2; echo "Compiling checkers"
+echo "${green}Compiling checkers${normal}"
 git submodule update --init --recursive
 
 mkdir -p example/scripts/checkers
@@ -25,7 +31,7 @@ mkdir -p example/scripts/checkers
 for file in testlib/checkers/*
 do
   filename_ex=${file##*/}
-  tput setaf 4; echo Compiling ${filename_ex}
+  echo "${blue}Compiling ${filename_ex}${normal}"
   filename=${filename_ex%.*}
   g++ -std=c++11 ${file} -O2 -o example/scripts/checkers/${filename} -I testlib/
 done
