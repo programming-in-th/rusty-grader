@@ -11,6 +11,20 @@ cd isolate
 make isolate
 cp isolate /usr/local/bin/isolate
 cp default.cf /usr/local/etc/isolate
+cd ..
 
 echo "Setting up C++ compiler and Rust's cargo"
 apt install g++ cargo
+
+echo "Compiling checker"
+git submodule update --init --recursive
+
+mkdir -p example/scripts/checkers
+
+for file in testlib/checkers/*
+do
+  filename_ex=${file##*/}
+  filename=${filename_ex%.*}
+  echo ${filename}
+  g++ -std=c++11 ${file} -O2 -o example/scripts/checkers/${filename} -I testlib/
+done
