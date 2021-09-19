@@ -28,13 +28,18 @@ apt install g++ cargo
 
 echo "${green}Compiling checkers${normal}\n"
 
-# Need fixing
-# mkdir -p ${SCRIPTPATH}/example/scripts/checkers
+CHECKER_PATH=${SCRIPTPATH}/example/scripts/checker_scripts
 
-# for file in ${SCRIPTPATH}/testlib/*
-# do
-#   filename_ex=${file##*/}
-#   echo "${blue}Compiling ${filename_ex}${normal}"
-#   filename=${filename_ex%.*}
-#   g++ -std=c++11 ${file} -O2 -o ${SCRIPTPATH}/example/scripts/checkers/${filename} -I ${SCRIPTPATH}/testlib
-# done
+mkdir -p ${CHECKER_PATH}
+
+for file in ${SCRIPTPATH}/testlib/*
+do
+  filename_ex=${file##*/}
+  ex=${filename_ex#*.}
+  if [ "${ex}" = "cpp" ];
+  then
+    echo "${blue}Compiling ${filename_ex}${normal}"
+    filename=${filename_ex%.*}
+    g++ -std=c++11 ${file} -O2 -o ${CHECKER_PATH}/${filename} -I ${SCRIPTPATH}/testlib
+  fi
+done
