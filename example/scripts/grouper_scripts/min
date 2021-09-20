@@ -2,12 +2,11 @@
 import sys
 
 full_score = float(sys.argv[1])
-score = sys.argv[2:]
+score = [int(i) for i in sys.argv[2:]]
 
 result = -1
 
 for i in score:
-    cs = int(i)
-    if result == -1 or cs < result:
-        result = cs
+    if result == -1 or i < result:
+        result = i
 print(result * full_score / 100)
