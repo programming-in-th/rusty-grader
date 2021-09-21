@@ -60,8 +60,8 @@ impl GroupResult {
 
 #[derive(Default, Debug)]
 pub struct SubmissionResult {
-    score: f64,
-    full_score: u64,
-    submission_id: String,
-    group_result: Vec<GroupResult>,
+    pub score: f64,
+    pub full_score: u64,
+    pub submission_id: String,
+    pub group_result: Vec<GroupResult>,
 }
