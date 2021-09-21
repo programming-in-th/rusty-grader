@@ -51,9 +51,9 @@ impl Default for RunVerdict {
 
 #[derive(Default, PartialEq, Debug)]
 pub struct InstanceResult {
-    status: RunVerdict,
-    time_usage: f64,
-    memory_usage: u64,
+    pub status: RunVerdict,
+    pub time_usage: f64,
+    pub memory_usage: u64,
 }
 
 impl Instance {
