@@ -1,3 +1,5 @@
+use crate::instance;
+use crate::instance::{Instance, InstanceResult, RunVerdict};
 use crate::utils::{get_base_path, get_code_extension, get_env};
 use manifest::Manifest;
 use std::{
@@ -23,6 +25,23 @@ pub struct Submission {
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
     pub bin_path: PathBuf,
+}
+
+enum TestCaseVerdict {
+    VerdictCorrect,
+    VerdictIncorrect,
+    VerdictPCorrect,
+    VerdictTLE,
+    VerdictMLE,
+    VerdictRE,
+    VerdictXX,
+    VerdictSG,
+}
+
+pub struct RunResult {
+    status: TestCaseVerdict,
+    score: f64,
+    message: String,
 }
 
 impl Submission {
@@ -87,6 +106,63 @@ impl Submission {
         }
 
         self.bin_path = PathBuf::from(compile_output_args.get(1).unwrap());
+        Ok(())
+    }
+
+    fn run_each(&self, checker: &PathBuf, runner: &PathBuf, index: u64) -> io::Result<RunResult> {
+        let mut instance = instance! {
+            time_limit: self.task_manifest.time_limit.unwrap(),
+            memory_limit: self.task_manifest.memory_limit.unwrap(),
+            bin_path: self.bin_path.clone(),
+            input_path: self.task_path.join("testcases").join(format!("{}.in", index)),
+            output_path: self.tmp_path.join(format!("output_{}", index)),
+            runner_path: runner.clone()
+        };
+
+        instance.init()?;
+        let result = instance.run()?;
+
+        Ok(())
+    }
+
+    pub fn run(&self) -> io::Result<()> {
+        if (!self.task_manifest.output_only) {
+            let checker =
+                self.task_manifest
+                    .checker
+                    .clone()
+                    .map_or(self.task_path.join("checker"), |file| {
+                        get_base_path()
+                            .join("scripts")
+                            .join("checker_script")
+                            .join(&file)
+                    });
+            let grouper =
+                self.task_manifest
+                    .grouper
+                    .clone()
+                    .map_or(self.task_path.join("grouper"), |file| {
+                        get_base_path()
+                            .join("scripts")
+                            .join("grouper_script")
+                            .join(&file)
+                    });
+            let runner = get_base_path()
+                .join("scripts")
+                .join("checker_script")
+                .join(&self.language);
+
+            let mut last_test = 1;
+
+            for (full_score, tests) in &self.task_manifest.groups {
+                for index in last_test..(last_test + tests) {
+                    self.run_each(&checker, &runner, index);
+                }
+
+                last_test += tests;
+            }
+        }
+
         Ok(())
     }
 }
