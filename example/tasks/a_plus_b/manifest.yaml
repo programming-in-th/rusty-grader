@@ -1,7 +1,6 @@
 task_id: "a_plus_b"
-default_limit:
-  time_limit: 1.0
-  memory_limit: 32
+time_limit: 1.0
+memory_limit: 32
 checker: "lcmp"
 grouper: "min"
 groups:
@@ -9,3 +8,9 @@ groups:
     tests: 5
   - full_score: 50
     tests: 5
+compile_files:
+  - cpp:
+    - "grader.cpp"
+    - "grader.h"
+  - python:
+    - "test.py"

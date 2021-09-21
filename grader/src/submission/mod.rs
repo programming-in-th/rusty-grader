@@ -1,42 +1,28 @@
-use crate::utils::{get_base_path, get_code_extension, get_env, load_yaml};
+use crate::utils::{get_base_path, get_code_extension, get_env};
+use manifest::Manifest;
 use std::{
     fs, io,
     io::{Error, Write},
     path::PathBuf,
     process::Command,
 };
-use yaml_rust::Yaml;
+
+pub mod manifest;
 
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug, Clone)]
+#[derive(Default, Debug, Clone)]
 pub struct Submission {
     pub task_id: String,
     pub submission_id: String,
     pub language: String,
     pub code: Vec<String>,
     pub code_path: Vec<PathBuf>,
-    pub task_manifest: Yaml,
+    pub task_manifest: Manifest,
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
     pub bin_path: PathBuf,
-}
-
-impl Default for Submission {
-    fn default() -> Self {
-        Self {
-            task_id: Default::default(),
-            submission_id: Default::default(),
-            language: Default::default(),
-            code: Default::default(),
-            code_path: Default::default(),
-            task_manifest: Yaml::Null,
-            tmp_path: Default::default(),
-            task_path: Default::default(),
-            bin_path: Default::default(),
-        }
-    }
 }
 
 impl Submission {
@@ -56,7 +42,7 @@ impl Submission {
         }
 
         self.task_path = get_base_path().join("tasks").join(&self.task_id);
-        self.task_manifest = load_yaml(self.task_path.join("manifest.yaml"));
+        self.task_manifest = Manifest::from(self.task_path.join("manifest.yaml"));
 
         if self.task_path.join("compile_files").is_dir() {
             let entries = fs::read_dir(self.task_path.join("compile_files"))?;
@@ -81,12 +67,9 @@ impl Submission {
             .chain(self.code_path.iter().cloned())
             .collect();
 
-        if self.task_manifest["compile_files"][self.language.as_str()].is_array() {
-            for compile_file in self.task_manifest["compile_files"][self.language.as_str()]
-                .as_vec()
-                .unwrap()
-            {
-                args.push(self.task_path.join(compile_file.as_str().unwrap()));
+        if let Some(compile_files) = &self.task_manifest.compile_files {
+            for compile_file in compile_files.get(&self.language).unwrap() {
+                args.push(self.task_path.join(&compile_file));
             }
         }
 

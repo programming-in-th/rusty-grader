@@ -38,10 +38,7 @@ fn should_parse_manifest_successfully() {
 
     submission.init().expect("Unable to init submission");
 
-    assert_eq!(
-        submission.task_manifest["task_id"].as_str().unwrap(),
-        "a_plus_b"
-    )
+    assert_eq!(&submission.task_manifest.task_id, "a_plus_b")
 }
 
 #[test]
