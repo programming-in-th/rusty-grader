@@ -4,8 +4,8 @@ use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
 use std::{
-    fs, io,
-    io::{Error, Write},
+    fs,
+    io::Write,
     path::PathBuf,
     process::Command,
 };
@@ -30,17 +30,17 @@ pub struct Submission {
 }
 
 impl Submission {
-    pub fn init(&mut self) -> io::Result<()> {
+    pub fn init(&mut self) {
         self.tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&self.submission_id);
-        fs::create_dir(&self.tmp_path)?;
+        fs::create_dir(&self.tmp_path).unwrap();
 
         let extension = get_code_extension(&self.language);
         for (idx, code) in self.code.iter().enumerate() {
             let code_path = self
                 .tmp_path
                 .join(format!("code_{}.{}", &idx.to_string(), &extension));
-            let mut file = fs::File::create(&code_path)?;
-            file.write(code.as_bytes())?;
+            let mut file = fs::File::create(&code_path).unwrap();
+            file.write(code.as_bytes()).unwrap();
 
             self.code_path.push(code_path.clone());
         }
@@ -49,16 +49,15 @@ impl Submission {
         self.task_manifest = Manifest::from(self.task_path.join("manifest.yaml"));
 
         if self.task_path.join("compile_files").is_dir() {
-            let entries = fs::read_dir(self.task_path.join("compile_files"))?;
+            let entries = fs::read_dir(self.task_path.join("compile_files")).unwrap();
             for entry in entries {
-                let path = entry?;
-                fs::copy(&path.path(), self.tmp_path.join(&path.file_name()))?;
+                let path = entry.unwrap();
+                fs::copy(&path.path(), self.tmp_path.join(&path.file_name())).unwrap();
             }
         }
-        Ok(())
     }
 
-    pub fn compile(&mut self) -> io::Result<()> {
+    pub fn compile(&mut self) {
         let compiler_path = get_base_path()
             .join("scripts")
             .join("compile_scripts")
@@ -77,24 +76,23 @@ impl Submission {
             }
         }
 
-        let compile_output = Command::new(compiler_path).args(args).output()?;
+        let compile_output = Command::new(compiler_path).args(args).output().unwrap();
         let compile_output_args = String::from_utf8(compile_output.stdout)
             .unwrap()
             .split("\n")
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
-        let return_code: i32 = compile_output_args.get(0).unwrap().parse().unwrap();
+        // let return_code: i32 = compile_output_args.get(0).unwrap().parse().unwrap();
 
-        if return_code != 0 {
-            return Err(Error::from_raw_os_error(return_code));
-        }
+        // if return_code != 0 {
+        //     return Err(Error::from_raw_os_error(return_code));
+        // }
 
         self.bin_path = PathBuf::from(compile_output_args.get(1).unwrap());
-        Ok(())
     }
 
-    fn run_each(&self, checker: &PathBuf, runner: &PathBuf, index: u64) -> io::Result<RunResult> {
+    fn run_each(&self, checker: &PathBuf, runner: &PathBuf, index: u64) -> RunResult {
         let input_path = self
             .task_path
             .join("testcases")
@@ -114,13 +112,13 @@ impl Submission {
             runner_path: runner.clone()
         };
 
-        instance.init()?;
-        let instance_result = instance.run()?;
+        instance.init();
+        let instance_result = instance.run();
 
         let mut run_result = RunResult::from(&self.submission_id, index);
         if instance_result.status == RunVerdict::VerdictOK {
             let args = vec![&input_path, &output_path, &sol_path];
-            let checker_result = Command::new(&checker).args(args).output()?;
+            let checker_result = Command::new(&checker).args(args).output().unwrap();
             let checker_output = String::from_utf8(checker_result.stdout)
                 .unwrap()
                 .trim_end_matches('\n')
@@ -148,11 +146,11 @@ impl Submission {
         }
         run_result.time_usage = instance_result.time_usage;
         run_result.memory_usage = instance_result.memory_usage;
-        
+
         if &run_result.message == "" {
             run_result.message = match run_result.status {
                 TestCaseVerdict::VerdictCorrect => get_message("Correct"),
-                TestCaseVerdict::VerdictCorrect => get_message("PCorrect"),
+                TestCaseVerdict::VerdictPCorrect => get_message("PCorrect"),
                 TestCaseVerdict::VerdictIncorrect => get_message("Incorrect"),
                 TestCaseVerdict::VerdictTLE => get_message("TLE"),
                 TestCaseVerdict::VerdictMLE => get_message("MLE"),
@@ -162,10 +160,10 @@ impl Submission {
             }
         }
 
-        Ok(run_result)
+        run_result
     }
 
-    pub fn run(&self) -> io::Result<SubmissionResult> {
+    pub fn run(&self) -> SubmissionResult {
         // if !self.task_manifest.output_only {
         let checker =
             self.task_manifest
@@ -209,7 +207,7 @@ impl Submission {
                 let run_result = if skip {
                     RunResult::from(&self.submission_id, index)
                 } else {
-                    self.run_each(&checker, &runner, index)?
+                    self.run_each(&checker, &runner, index)
                 };
                 args.push(run_result.score.to_string());
                 skip = run_result.status != TestCaseVerdict::VerdictCorrect
@@ -218,7 +216,7 @@ impl Submission {
                 group_result.run_result.push(run_result);
             }
             if !skip {
-                let grouper_result = Command::new(&grouper).args(args).output()?;
+                let grouper_result = Command::new(&grouper).args(args).output().unwrap();
                 group_result.score = String::from_utf8(grouper_result.stdout)
                     .unwrap()
                     .trim_end_matches('\n')
@@ -232,12 +230,12 @@ impl Submission {
             last_test += tests;
         }
 
-        Ok(SubmissionResult {
+        SubmissionResult {
             score: total_score,
             full_score: total_full_score,
             submission_id: self.submission_id.clone(),
             group_result: group_results,
-        })
+        }
         // } else {
 
         // }

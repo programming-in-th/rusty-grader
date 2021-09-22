@@ -22,10 +22,11 @@ fn should_complete_initialize_instance() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init().expect("Should run init without error");
+    instance.init();
 }
 
 #[test]
+#[should_panic]
 fn should_error_if_input_path_is_wrong() {
     dotenv().ok();
 
@@ -41,12 +42,12 @@ fn should_error_if_input_path_is_wrong() {
         input_path: base_dir.join("input_wrong_path"),
         runner_path: base_dir.join("run_cpp")
     };
-    let init_result = instance.init();
 
-    assert_eq!(init_result.unwrap_err().kind(), io::ErrorKind::NotFound);
+    let _init_result = instance.init();
 }
 
 #[test]
+#[should_panic]
 fn should_error_if_output_path_is_wrong() {
     dotenv().ok();
 
@@ -63,12 +64,11 @@ fn should_error_if_output_path_is_wrong() {
         runner_path: base_dir.join("run_cpp")
     };
 
-    let init_result = instance.init();
-
-    assert_eq!(init_result.unwrap_err().kind(), io::ErrorKind::NotFound);
+    let _init_result = instance.init();
 }
 
 #[test]
+#[should_panic]
 fn should_error_if_runner_path_is_wrong() {
     dotenv().ok();
     // get base directory
@@ -85,9 +85,7 @@ fn should_error_if_runner_path_is_wrong() {
         runner_path: base_dir.join("run_cpp_wrong_path")
     };
 
-    let init_result = instance.init();
-
-    assert_eq!(init_result.unwrap_err().kind(), io::ErrorKind::NotFound);
+    let _init_result = instance.init();
 }
 
 #[test]
@@ -96,7 +94,7 @@ fn should_read_log_correctly_when_ok() {
 
     let test_log = get_example_dir().join("etc").join("log_ok.txt");
     let tmp_log = get_tmp_path().join("test_log_ok.txt");
-    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp");
+    fs::copy(&test_log, &tmp_log).unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
@@ -104,8 +102,7 @@ fn should_read_log_correctly_when_ok() {
     };
 
     let result = instance
-        .get_result()
-        .expect("Should read log without error");
+        .get_result();
 
     assert_eq!(
         result,
@@ -123,7 +120,7 @@ fn should_trigger_when_read_log_with_re() {
 
     let test_log = get_example_dir().join("etc").join("log_re.txt");
     let tmp_log = get_tmp_path().join("test_log_re.txt");
-    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_re to tmp");
+    fs::copy(&test_log, &tmp_log).unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
@@ -131,8 +128,7 @@ fn should_trigger_when_read_log_with_re() {
     };
 
     let result = instance
-        .get_result()
-        .expect("Should read log without error");
+        .get_result();
 
     assert_eq!(
         result,
@@ -150,7 +146,7 @@ fn should_trigger_when_read_log_with_to() {
 
     let test_log = get_example_dir().join("etc").join("log_to.txt");
     let tmp_log = get_tmp_path().join("test_log_to.txt");
-    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_to to tmp");
+    fs::copy(&test_log, &tmp_log).unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
@@ -158,8 +154,7 @@ fn should_trigger_when_read_log_with_to() {
     };
 
     let result = instance
-        .get_result()
-        .expect("Should read log without error");
+        .get_result();
 
     assert_eq!(
         result,
@@ -177,7 +172,7 @@ fn should_trigger_when_read_log_with_sg() {
 
     let test_log = get_example_dir().join("etc").join("log_sg.txt");
     let tmp_log = get_tmp_path().join("test_log_sg.txt");
-    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_sg to tmp");
+    fs::copy(&test_log, &tmp_log).unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
@@ -185,8 +180,7 @@ fn should_trigger_when_read_log_with_sg() {
     };
 
     let result = instance
-        .get_result()
-        .expect("Should read log without error");
+        .get_result();
 
     assert_eq!(
         result,
@@ -204,7 +198,7 @@ fn should_trigger_when_read_log_with_xx() {
 
     let test_log = get_example_dir().join("etc").join("log_xx.txt");
     let tmp_log = get_tmp_path().join("test_log_xx.txt");
-    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_xx to tmp");
+    fs::copy(&test_log, &tmp_log).unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
@@ -212,8 +206,7 @@ fn should_trigger_when_read_log_with_xx() {
     };
 
     let result = instance
-        .get_result()
-        .expect("Should read log without error");
+        .get_result();
 
     assert_eq!(
         result,
@@ -230,7 +223,7 @@ fn should_trigger_when_read_log_with_mle() {
 
     let test_log = get_example_dir().join("etc").join("log_ok.txt");
     let tmp_log = get_tmp_path().join("test_log_mle.txt");
-    fs::copy(&test_log, &tmp_log).expect("Unable to copy log_ok to tmp (MLE)");
+    fs::copy(&test_log, &tmp_log).unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
@@ -238,8 +231,7 @@ fn should_trigger_when_read_log_with_mle() {
     };
 
     let result = instance
-        .get_result()
-        .expect("Should read log without error");
+        .get_result();
 
     assert_eq!(
         result,
@@ -268,8 +260,8 @@ fn should_get_ok() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init().expect("Should init without error");
-    let result = instance.run().expect("Should run without error");
+    instance.init();
+    let result = instance.run();
 
     assert_eq!(result.status, RunVerdict::VerdictOK);
 }
@@ -291,8 +283,8 @@ fn should_get_tle() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init().expect("Should init without error");
-    let result = instance.run().expect("Should run without error");
+    instance.init();
+    let result = instance.run();
 
     assert_eq!(result.status, RunVerdict::VerdictTLE);
 }
@@ -314,8 +306,8 @@ fn should_get_re() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init().expect("Should init without error");
-    let result = instance.run().expect("Should run without error");
+    instance.init();
+    let result = instance.run();
 
     assert_eq!(result.status, RunVerdict::VerdictRE);
 }
@@ -337,8 +329,8 @@ fn should_get_mle() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init().expect("Should init without error");
-    let result = instance.run().expect("Should run without error");
+    instance.init();
+    let result = instance.run();
 
     assert_eq!(result.status, RunVerdict::VerdictMLE);
 }

@@ -1,6 +1,6 @@
 use crate::combine_argument;
 use crate::utils::get_env;
-use std::{fs, io, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf, process::Command};
 
 #[cfg(test)]
 mod tests;
@@ -84,8 +84,8 @@ impl Instance {
         ]
     }
 
-    pub fn get_result(&self) -> io::Result<InstanceResult> {
-        let log_content = fs::read_to_string(&self.log_file)?;
+    pub fn get_result(&self) -> InstanceResult {
+        let log_content = fs::read_to_string(&self.log_file).unwrap();
         let mut result: InstanceResult = Default::default();
         for log_line in log_content.split("\n") {
             let args: Vec<&str> = log_line.split(":").collect();
@@ -109,15 +109,15 @@ impl Instance {
         if result.memory_usage > self.memory_limit && result.status == Default::default() {
             result.status = RunVerdict::VerdictMLE;
         }
-        Ok(result)
+        result
     }
 
-    pub fn init(&mut self) -> io::Result<()> {
+    pub fn init(&mut self) {
         for tmp_box_idx in 1..=1000 {
             let box_path = Command::new(get_env("ISOLATE_PATH"))
                 .args(&["--init", "--cg", "-b"])
                 .arg(tmp_box_idx.to_string())
-                .output()?;
+                .output().unwrap();
 
             if box_path.status.success() {
                 let mut box_path = String::from_utf8(box_path.stdout).unwrap();
@@ -131,26 +131,24 @@ impl Instance {
         let tmp_path = get_env("TEMPORARY_PATH");
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
-        fs::copy(&self.input_path, &self.box_path.join("input"))?;
+        fs::copy(&self.input_path, &self.box_path.join("input")).unwrap();
 
         fs::copy(
             &self.bin_path,
             &self.box_path.join(self.bin_path.file_name().unwrap()),
-        )?;
+        ).unwrap();
 
-        fs::copy(&self.runner_path, &self.box_path.join("runner"))?;
-
-        Ok(())
+        fs::copy(&self.runner_path, &self.box_path.join("runner")).unwrap();
     }
 
-    pub fn run(&self) -> io::Result<InstanceResult> {
+    pub fn run(&self) -> InstanceResult {
         let args = self.get_run_arguments();
-        Command::new(get_env("ISOLATE_PATH")).args(args).output()?;
+        Command::new(get_env("ISOLATE_PATH")).args(args).output().unwrap();
 
-        let result = self.get_result()?;
+        let result = self.get_result();
         if result.status == RunVerdict::VerdictOK {
-            fs::copy(&self.box_path.join("output"), &self.output_path)?;
+            fs::copy(&self.box_path.join("output"), &self.output_path).unwrap();
         }
-        Ok(result)
+        result
     }
 }
