@@ -7,11 +7,12 @@ pub fn get_env(name: &'static str) -> String {
 
 pub fn get_base_path() -> PathBuf {
     env::var("BASE_PATH").map_or(
-        PathBuf::from(env::current_dir().unwrap())
+        env::current_dir()
+            .unwrap()
             .parent()
             .unwrap()
             .join("example"),
-        |path| PathBuf::from(path),
+        PathBuf::from,
     )
 }
 
@@ -46,7 +47,7 @@ pub fn get_message(status: &str) -> String {
                 None
             }
         })
-        .unwrap_or(String::new())
+        .unwrap_or_else(String::new)
 }
 
 #[cfg(test)]

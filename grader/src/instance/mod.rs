@@ -87,8 +87,8 @@ impl Instance {
     pub fn get_result(&self) -> InstanceResult {
         let log_content = fs::read_to_string(&self.log_file).unwrap();
         let mut result: InstanceResult = Default::default();
-        for log_line in log_content.split("\n") {
-            let args: Vec<&str> = log_line.split(":").collect();
+        for log_line in log_content.split('\n') {
+            let args: Vec<&str> = log_line.split(':').collect();
             if args.len() >= 2 {
                 match &*args[0] {
                     "status" => {
@@ -117,11 +117,12 @@ impl Instance {
             let box_path = Command::new(get_env("ISOLATE_PATH"))
                 .args(&["--init", "--cg", "-b"])
                 .arg(tmp_box_idx.to_string())
-                .output().unwrap();
+                .output()
+                .unwrap();
 
             if box_path.status.success() {
                 let mut box_path = String::from_utf8(box_path.stdout).unwrap();
-                box_path = box_path.strip_suffix("\n").unwrap_or(&box_path).to_string();
+                box_path = box_path.strip_suffix('\n').unwrap_or(&box_path).to_string();
                 self.box_path = PathBuf::from(&box_path).join("box");
                 self.box_id = tmp_box_idx;
                 break;
@@ -136,14 +137,18 @@ impl Instance {
         fs::copy(
             &self.bin_path,
             &self.box_path.join(self.bin_path.file_name().unwrap()),
-        ).unwrap();
+        )
+        .unwrap();
 
         fs::copy(&self.runner_path, &self.box_path.join("runner")).unwrap();
     }
 
     pub fn run(&self) -> InstanceResult {
         let args = self.get_run_arguments();
-        Command::new(get_env("ISOLATE_PATH")).args(args).output().unwrap();
+        Command::new(get_env("ISOLATE_PATH"))
+            .args(args)
+            .output()
+            .unwrap();
 
         let result = self.get_result();
         if result.status == RunVerdict::VerdictOK {

@@ -17,12 +17,13 @@ pub struct Manifest {
 impl Manifest {
     pub fn from(path: PathBuf) -> Self {
         let yaml = load_yaml(path);
-        let mut manifest: Manifest = Default::default();
-
-        manifest.task_id = yaml["task_id"].as_str().unwrap().to_owned();
-        manifest.output_only = yaml["output_only"].as_bool().unwrap_or(false);
-        manifest.time_limit = yaml["time_limit"].as_f64();
-        manifest.memory_limit = yaml["memory_limit"].as_i64().map(|limit| limit as u64);
+        let mut manifest: Manifest = Manifest {
+            task_id: yaml["task_id"].as_str().unwrap().to_owned(),
+            output_only: yaml["output_only"].as_bool().unwrap_or(false),
+            time_limit: yaml["time_limit"].as_f64(),
+            memory_limit: yaml["memory_limit"].as_i64().map(|limit| limit as u64),
+            ..Default::default()
+        };
 
         if let Some(limits) = yaml["limit"].as_hash() {
             manifest.limit = Some(

@@ -3,12 +3,7 @@ use crate::instance::{Instance, RunVerdict};
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
-use std::{
-    fs,
-    io::Write,
-    path::PathBuf,
-    process::Command,
-};
+use std::{fs, io::Write, path::Path, path::PathBuf, process::Command};
 
 pub mod manifest;
 pub mod result;
@@ -40,7 +35,7 @@ impl Submission {
                 .tmp_path
                 .join(format!("code_{}.{}", &idx.to_string(), &extension));
             let mut file = fs::File::create(&code_path).unwrap();
-            file.write(code.as_bytes()).unwrap();
+            file.write_all(code.as_bytes()).unwrap();
 
             self.code_path.push(code_path.clone());
         }
@@ -79,7 +74,7 @@ impl Submission {
         let compile_output = Command::new(compiler_path).args(args).output().unwrap();
         let compile_output_args = String::from_utf8(compile_output.stdout)
             .unwrap()
-            .split("\n")
+            .split('\n')
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
@@ -92,7 +87,7 @@ impl Submission {
         self.bin_path = PathBuf::from(compile_output_args.get(1).unwrap());
     }
 
-    fn run_each(&self, checker: &PathBuf, runner: &PathBuf, index: u64) -> RunResult {
+    fn run_each(&self, checker: &Path, runner: &Path, index: u64) -> RunResult {
         let input_path = self
             .task_path
             .join("testcases")
@@ -109,7 +104,7 @@ impl Submission {
             bin_path: self.bin_path.clone(),
             input_path: input_path.clone(),
             output_path: output_path.clone(),
-            runner_path: runner.clone()
+            runner_path: runner.to_path_buf()
         };
 
         instance.init();
@@ -122,7 +117,7 @@ impl Submission {
             let checker_output = String::from_utf8(checker_result.stdout)
                 .unwrap()
                 .trim_end_matches('\n')
-                .split("\n")
+                .split('\n')
                 .map(|s| s.to_string())
                 .collect::<Vec<String>>();
 
@@ -147,7 +142,7 @@ impl Submission {
         run_result.time_usage = instance_result.time_usage;
         run_result.memory_usage = instance_result.memory_usage;
 
-        if &run_result.message == "" {
+        if run_result.message.is_empty() {
             run_result.message = match run_result.status {
                 TestCaseVerdict::VerdictCorrect => get_message("Correct"),
                 TestCaseVerdict::VerdictPCorrect => get_message("PCorrect"),

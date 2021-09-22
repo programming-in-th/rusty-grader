@@ -30,9 +30,11 @@ impl Default for TestCaseVerdict {
 
 impl RunResult {
     pub fn from(submission_id: &str, index: u64) -> Self {
-        let mut run_result: RunResult = Default::default();
-        run_result.submission_id = submission_id.to_owned();
-        run_result.test_index = index;
+        let run_result: RunResult = RunResult {
+            submission_id: submission_id.to_owned(),
+            test_index: index,
+            ..Default::default()
+        };
 
         run_result
     }
@@ -49,12 +51,12 @@ pub struct GroupResult {
 
 impl GroupResult {
     pub fn from(full_score: u64, submission_id: &str, index: u64) -> Self {
-        let mut group_result: GroupResult = Default::default();
-        group_result.full_score = full_score;
-        group_result.submission_id = submission_id.to_owned();
-        group_result.group_index = index;
-
-        group_result
+        GroupResult {
+            full_score,
+            submission_id: submission_id.to_owned(),
+            group_index: index,
+            ..Default::default()
+        }
     }
 }
 
