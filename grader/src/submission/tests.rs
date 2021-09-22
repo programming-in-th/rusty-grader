@@ -94,3 +94,23 @@ fn should_compile_rust_successfully() {
     submission.init().expect("Unable to init submission");
     submission.compile().expect("Unable to compile submission");
 }
+
+#[test]
+fn should_run_cpp_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
+        .expect("Unable to read code from example dir");
+
+    let mut submission = submission! {
+        task_id: s!("a_plus_b"),
+        submission_id: s!("000005"),
+        language: s!("cpp"),
+        code: vec![code.clone()]
+    };
+
+    submission.init().expect("Unable to init submission");
+    submission.compile().expect("Unable to compile submission");
+    let result = submission.run();
+    println!("{:#?}", result);
+}

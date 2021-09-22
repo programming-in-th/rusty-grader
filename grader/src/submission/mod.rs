@@ -1,7 +1,7 @@
 use crate::instance;
 use crate::instance::{Instance, RunVerdict};
 use crate::submission::result::*;
-use crate::utils::{get_base_path, get_code_extension, get_env};
+use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
 use std::{
     fs, io,
@@ -107,7 +107,7 @@ impl Submission {
 
         let mut instance = instance! {
             time_limit: self.task_manifest.time_limit.unwrap(),
-            memory_limit: self.task_manifest.memory_limit.unwrap(),
+            memory_limit: self.task_manifest.memory_limit.unwrap() * 1000,
             bin_path: self.bin_path.clone(),
             input_path: input_path.clone(),
             output_path: output_path.clone(),
@@ -148,6 +148,19 @@ impl Submission {
         }
         run_result.time_usage = instance_result.time_usage;
         run_result.memory_usage = instance_result.memory_usage;
+        
+        if &run_result.message == "" {
+            run_result.message = match run_result.status {
+                TestCaseVerdict::VerdictCorrect => get_message("Correct"),
+                TestCaseVerdict::VerdictCorrect => get_message("PCorrect"),
+                TestCaseVerdict::VerdictIncorrect => get_message("Incorrect"),
+                TestCaseVerdict::VerdictTLE => get_message("TLE"),
+                TestCaseVerdict::VerdictMLE => get_message("MLE"),
+                TestCaseVerdict::VerdictRE => get_message("RE"),
+                TestCaseVerdict::VerdictSG => get_message("SG"),
+                _ => get_message("XX"),
+            }
+        }
 
         Ok(run_result)
     }
@@ -161,7 +174,7 @@ impl Submission {
                 .map_or(self.task_path.join("checker"), |file| {
                     get_base_path()
                         .join("scripts")
-                        .join("checker_script")
+                        .join("checker_scripts")
                         .join(&file)
                 });
         let grouper =
@@ -171,12 +184,12 @@ impl Submission {
                 .map_or(self.task_path.join("grouper"), |file| {
                     get_base_path()
                         .join("scripts")
-                        .join("grouper_script")
+                        .join("grouper_scripts")
                         .join(&file)
                 });
         let runner = get_base_path()
             .join("scripts")
-            .join("checker_script")
+            .join("runner_scripts")
             .join(&self.language);
 
         let mut last_test = 1;

@@ -5,3 +5,12 @@ language:
     extension: "py"
   - id: "rust"
     extension: "rs"
+message:
+  Correct: "Output is correct"
+  PCorrect: "Output is partially correct"
+  Incorrect: "Output is incorrect"
+  TLE: "Judge killed: time limit exceeded"
+  MLE: "Judge killed: memory limit exceeded"
+  RE: "Judge killed: runtime error"
+  SG: "Judge killed: program died on a signal"
+  XX: "Judge killed: internal error"

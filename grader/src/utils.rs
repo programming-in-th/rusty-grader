@@ -32,6 +32,23 @@ pub fn get_code_extension(language: &str) -> String {
     "".to_string()
 }
 
+pub fn get_message(status: &str) -> String {
+    let config = load_yaml(get_base_path().join("scripts").join("config.yaml"));
+    config["message"]
+        .as_hash()
+        .unwrap()
+        .clone()
+        .iter()
+        .find_map(|(schema, value)| {
+            if schema.as_str().unwrap() == status {
+                Some(value.as_str().unwrap().to_owned())
+            } else {
+                None
+            }
+        })
+        .unwrap_or(String::new())
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::utils::get_env;
