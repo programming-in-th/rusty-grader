@@ -17,16 +17,12 @@ pub struct Manifest {
 impl Manifest {
     pub fn from(path: PathBuf) -> Self {
         let yaml = load_yaml(path);
-        let mut manifest = Manifest {
+        Manifest {
             task_id: yaml["task_id"].as_str().unwrap().to_owned(),
             output_only: yaml["output_only"].as_bool().unwrap_or(false),
             time_limit: yaml["time_limit"].as_f64(),
             memory_limit: yaml["memory_limit"].as_i64().map(|limit| limit as u64),
-            ..Default::default()
-        };
-
-        if let Some(limits) = yaml["limit"].as_hash() {
-            manifest.limit = Some(
+            limit: yaml["limit"].as_hash().map(|limits| {
                 limits
                     .clone()
                     .iter()
@@ -39,12 +35,9 @@ impl Manifest {
                             ),
                         )
                     })
-                    .collect(),
-            );
-        }
-
-        if let Some(compile_files) = yaml["compile_files"].as_hash() {
-            manifest.compile_files = Some(
+                    .collect()
+            }),
+            compile_files: yaml["compile_files"].as_hash().map(|compile_files| {
                 compile_files
                     .clone()
                     .iter()
@@ -60,20 +53,24 @@ impl Manifest {
                                 .collect(),
                         )
                     })
-                    .collect(),
-            );
+                    .collect()
+            }),
+            checker: yaml["checker"].as_str().map(|checker| checker.to_owned()),
+            grouper: yaml["grouper"].as_str().map(|grouper| grouper.to_owned()),
+            groups: yaml["groups"]
+                .as_vec()
+                .map(|groups| {
+                    groups
+                        .iter()
+                        .map(|group| {
+                            (
+                                group["full_score"].as_i64().unwrap() as u64,
+                                group["tests"].as_i64().unwrap() as u64,
+                            )
+                        })
+                        .collect()
+                })
+                .unwrap(),
         }
-
-        manifest.checker = yaml["checker"].as_str().map(|checker| checker.to_owned());
-        manifest.grouper = yaml["grouper"].as_str().map(|grouper| grouper.to_owned());
-
-        for group in yaml["groups"].as_vec().unwrap() {
-            manifest.groups.push((
-                group["full_score"].as_i64().unwrap() as u64,
-                group["tests"].as_i64().unwrap() as u64,
-            ));
-        }
-
-        manifest
     }
 }
