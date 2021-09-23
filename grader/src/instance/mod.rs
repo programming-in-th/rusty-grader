@@ -87,7 +87,7 @@ impl Instance {
     pub fn get_result(&self) -> InstanceResult {
         let log_content = fs::read_to_string(&self.log_file).unwrap();
         let mut result: InstanceResult = Default::default();
-        for log_line in log_content.split('\n') {
+        for log_line in log_content.lines() {
             let args: Vec<&str> = log_line.split(':').collect();
             if args.len() >= 2 {
                 match &*args[0] {

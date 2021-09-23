@@ -75,7 +75,7 @@ impl Submission {
         let compile_output = Command::new(compiler_path).args(args).output().unwrap();
         let compile_output_args = String::from_utf8(compile_output.stdout)
             .unwrap()
-            .split('\n')
+            .lines()
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
@@ -125,7 +125,7 @@ impl Submission {
                 let checker_output = String::from_utf8(checker_result.stdout)
                     .unwrap()
                     .trim_end_matches('\n')
-                    .split('\n')
+                    .lines()
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
 
