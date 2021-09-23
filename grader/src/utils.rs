@@ -1,3 +1,4 @@
+use crate::s;
 use std::{env, fs, path::PathBuf};
 use yaml_rust::{Yaml, YamlLoader};
 
@@ -18,36 +19,40 @@ pub fn get_base_path() -> PathBuf {
 
 pub fn load_yaml(path: PathBuf) -> Yaml {
     let file = fs::read_to_string(path).expect("Unable to read yaml file");
-    YamlLoader::load_from_str(&file).expect("Unable to parse yaml file")[0].clone()
+    YamlLoader::load_from_str(&file)
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap()
+}
+
+fn yaml_unwrap_hash(yaml: Yaml, arg: &str) -> Option<Yaml> {
+    yaml.into_hash().unwrap().remove(&Yaml::String(s!(arg)))
 }
 
 pub fn get_code_extension(language: &str) -> String {
     let config = load_yaml(get_base_path().join("scripts").join("config.yaml"));
 
-    for lang in config["language"].as_vec().unwrap() {
+    for lang in yaml_unwrap_hash(config, "language")
+        .unwrap()
+        .into_vec()
+        .unwrap()
+    {
         if Some(language) == lang["id"].as_str() {
-            return lang["extension"].as_str().unwrap().to_owned();
+            return yaml_unwrap_hash(lang, "extension")
+                .unwrap()
+                .into_string()
+                .unwrap();
         }
     }
 
-    "".to_string()
+    String::new()
 }
 
 pub fn get_message(status: &str) -> String {
     let config = load_yaml(get_base_path().join("scripts").join("config.yaml"));
-    config["message"]
-        .as_hash()
-        .unwrap()
-        .clone()
-        .iter()
-        .find_map(|(schema, value)| {
-            if schema.as_str().unwrap() == status {
-                Some(value.as_str().unwrap().to_owned())
-            } else {
-                None
-            }
-        })
-        .unwrap_or_else(String::new)
+    yaml_unwrap_hash(yaml_unwrap_hash(config, "message").unwrap(), status)
+        .map_or(String::new(), |value| value.into_string().unwrap())
 }
 
 #[cfg(test)]

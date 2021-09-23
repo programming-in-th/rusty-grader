@@ -24,7 +24,6 @@ impl Manifest {
             memory_limit: yaml["memory_limit"].as_i64().map(|limit| limit as u64),
             limit: yaml["limit"].as_hash().map(|limits| {
                 limits
-                    .clone()
                     .iter()
                     .map(|(language, limit)| {
                         (
@@ -39,7 +38,6 @@ impl Manifest {
             }),
             compile_files: yaml["compile_files"].as_hash().map(|compile_files| {
                 compile_files
-                    .clone()
                     .iter()
                     .map(|(language, files)| {
                         (
@@ -47,7 +45,6 @@ impl Manifest {
                             files
                                 .as_vec()
                                 .unwrap()
-                                .clone()
                                 .iter()
                                 .map(|file| file.as_str().unwrap().to_owned())
                                 .collect(),

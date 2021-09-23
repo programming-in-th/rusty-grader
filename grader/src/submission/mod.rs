@@ -59,18 +59,22 @@ impl Submission {
             .join("compile_scripts")
             .join(&self.language);
 
-        let mut args = vec![self.tmp_path.clone()];
-        args = args
-            .iter()
-            .cloned()
-            .chain(self.code_path.iter().cloned())
-            .collect();
+        let mut args = vec![&self.tmp_path];
+        self.code_path.iter().for_each(|path| {
+            args.push(&path);
+        });
+
+        let mut tmp_compile_files = vec![];
 
         if let Some(compile_files) = &self.task_manifest.compile_files {
             for compile_file in compile_files.get(&self.language).unwrap() {
-                args.push(self.task_path.join(&compile_file));
+                tmp_compile_files.push(self.task_path.join(&compile_file));
             }
         }
+
+        tmp_compile_files.iter().for_each(|path| {
+            args.push(&path);
+        });
 
         let compile_output = Command::new(compiler_path).args(args).output().unwrap();
         let compile_output_args = String::from_utf8(compile_output.stdout)
@@ -154,7 +158,7 @@ impl Submission {
         let checker =
             self.task_manifest
                 .checker
-                .clone()
+                .as_ref()
                 .map_or(self.task_path.join("checker"), |file| {
                     get_base_path()
                         .join("scripts")
@@ -164,7 +168,7 @@ impl Submission {
         let grouper =
             self.task_manifest
                 .grouper
-                .clone()
+                .as_ref()
                 .map_or(self.task_path.join("grouper"), |file| {
                     get_base_path()
                         .join("scripts")
@@ -218,7 +222,7 @@ impl Submission {
         SubmissionResult {
             score: total_score,
             full_score: total_full_score,
-            submission_id: self.submission_id.clone(),
+            submission_id: self.submission_id.to_owned(),
             group_result: group_results,
         }
     }
