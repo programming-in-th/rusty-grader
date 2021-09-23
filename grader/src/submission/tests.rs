@@ -9,8 +9,7 @@ use std::fs;
 fn should_complete_initialize_submission() {
     dotenv().ok();
 
-    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
-        .unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
     let mut submission = submission! {
         task_id: s!("a_plus_b"),
@@ -26,8 +25,7 @@ fn should_complete_initialize_submission() {
 fn should_parse_manifest_successfully() {
     dotenv().ok();
 
-    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
-        .unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
     let mut submission = submission! {
         task_id: s!("a_plus_b"),
@@ -45,8 +43,7 @@ fn should_parse_manifest_successfully() {
 fn should_compile_cpp_successfully() {
     dotenv().ok();
 
-    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
-        .unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
     let mut submission = submission! {
         task_id: s!("a_plus_b"),
@@ -63,8 +60,7 @@ fn should_compile_cpp_successfully() {
 fn should_compile_python_successfully() {
     dotenv().ok();
 
-    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py"))
-        .unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py")).unwrap();
 
     let mut submission = submission! {
         task_id: s!("a_plus_b"),
@@ -81,8 +77,7 @@ fn should_compile_python_successfully() {
 fn should_compile_rust_successfully() {
     dotenv().ok();
 
-    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.rs"))
-        .unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.rs")).unwrap();
 
     let mut submission = submission! {
         task_id: s!("a_plus_b"),
@@ -99,8 +94,7 @@ fn should_compile_rust_successfully() {
 fn should_run_cpp_successfully() {
     dotenv().ok();
 
-    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp"))
-        .unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
     let mut submission = submission! {
         task_id: s!("a_plus_b"),

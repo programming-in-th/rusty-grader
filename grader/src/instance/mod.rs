@@ -121,8 +121,10 @@ impl Instance {
                 .unwrap();
 
             if box_path.status.success() {
-                let mut box_path = String::from_utf8(box_path.stdout).unwrap();
-                box_path = box_path.strip_suffix('\n').unwrap_or(&box_path).to_string();
+                let box_path = String::from_utf8(box_path.stdout)
+                    .unwrap()
+                    .trim_end_matches('\n')
+                    .to_owned();
                 self.box_path = PathBuf::from(&box_path).join("box");
                 self.box_id = tmp_box_idx;
                 break;

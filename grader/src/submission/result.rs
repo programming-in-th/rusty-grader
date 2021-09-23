@@ -1,42 +1,23 @@
-#[derive(Debug, PartialEq)]
-pub enum TestCaseVerdict {
-    VerdictCorrect,
-    VerdictIncorrect,
-    VerdictPCorrect,
-    VerdictSkip,
-    VerdictTLE,
-    VerdictMLE,
-    VerdictRE,
-    VerdictXX,
-    VerdictSG,
-}
-
 #[derive(Default, Debug, PartialEq)]
 pub struct RunResult {
     pub submission_id: String,
     pub test_index: u64,
-    pub status: TestCaseVerdict,
+    pub status: String,
     pub time_usage: f64,
     pub memory_usage: u64,
     pub score: f64,
     pub message: String,
 }
 
-impl Default for TestCaseVerdict {
-    fn default() -> Self {
-        TestCaseVerdict::VerdictSkip
-    }
-}
-
 impl RunResult {
-    pub fn from(submission_id: &str, index: u64) -> Self {
-        let run_result: RunResult = RunResult {
+    pub fn from(submission_id: &str, index: u64, time_usage: f64, memory_usage: u64) -> Self {
+        RunResult {
             submission_id: submission_id.to_owned(),
             test_index: index,
+            time_usage,
+            memory_usage,
             ..Default::default()
-        };
-
-        run_result
+        }
     }
 }
 

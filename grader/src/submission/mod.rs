@@ -1,5 +1,6 @@
 use crate::instance;
 use crate::instance::{Instance, RunVerdict};
+use crate::s;
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
@@ -110,49 +111,39 @@ impl Submission {
         instance.init();
         let instance_result = instance.run();
 
-        let mut run_result = RunResult::from(&self.submission_id, index);
-        if instance_result.status == RunVerdict::VerdictOK {
-            let args = vec![&input_path, &output_path, &sol_path];
-            let checker_result = Command::new(&checker).args(args).output().unwrap();
-            let checker_output = String::from_utf8(checker_result.stdout)
-                .unwrap()
-                .trim_end_matches('\n')
-                .split('\n')
-                .map(|s| s.to_string())
-                .collect::<Vec<String>>();
+        let mut run_result = RunResult::from(
+            &self.submission_id,
+            index,
+            instance_result.time_usage,
+            instance_result.memory_usage,
+        );
 
-            run_result.status = match checker_output.get(0).unwrap().as_str() {
-                "Correct" => TestCaseVerdict::VerdictCorrect,
-                "Partially correct" => TestCaseVerdict::VerdictPCorrect,
-                _ => TestCaseVerdict::VerdictIncorrect,
-            };
-            run_result.score = checker_output.get(1).unwrap().parse().unwrap();
-            run_result.message = checker_output
-                .get(2)
-                .map_or(String::new(), |v| v.to_owned());
-        } else {
-            run_result.status = match instance_result.status {
-                RunVerdict::VerdictTLE => TestCaseVerdict::VerdictTLE,
-                RunVerdict::VerdictMLE => TestCaseVerdict::VerdictMLE,
-                RunVerdict::VerdictRE => TestCaseVerdict::VerdictRE,
-                RunVerdict::VerdictSG => TestCaseVerdict::VerdictSG,
-                _ => TestCaseVerdict::VerdictXX,
-            };
-        }
-        run_result.time_usage = instance_result.time_usage;
-        run_result.memory_usage = instance_result.memory_usage;
+        run_result.status = match instance_result.status {
+            RunVerdict::VerdictOK => {
+                let args = vec![&input_path, &output_path, &sol_path];
+                let checker_result = Command::new(&checker).args(args).output().unwrap();
+                let checker_output = String::from_utf8(checker_result.stdout)
+                    .unwrap()
+                    .trim_end_matches('\n')
+                    .split('\n')
+                    .map(|s| s.to_string())
+                    .collect::<Vec<String>>();
+
+                run_result.score = checker_output.get(1).unwrap().parse().unwrap();
+                run_result.message = checker_output
+                    .get(2)
+                    .map_or(String::new(), |v| v.to_owned());
+                checker_output.get(0).unwrap().as_str().to_owned()
+            }
+            RunVerdict::VerdictTLE => s!("Time Limit Exceeded"),
+            RunVerdict::VerdictMLE => s!("Memory Limit Exceeded"),
+            RunVerdict::VerdictRE => s!("Runtime Error"),
+            RunVerdict::VerdictSG => s!("Signal Error"),
+            _ => s!("Judge Error"),
+        };
 
         if run_result.message.is_empty() {
-            run_result.message = match run_result.status {
-                TestCaseVerdict::VerdictCorrect => get_message("Correct"),
-                TestCaseVerdict::VerdictPCorrect => get_message("PCorrect"),
-                TestCaseVerdict::VerdictIncorrect => get_message("Incorrect"),
-                TestCaseVerdict::VerdictTLE => get_message("TLE"),
-                TestCaseVerdict::VerdictMLE => get_message("MLE"),
-                TestCaseVerdict::VerdictRE => get_message("RE"),
-                TestCaseVerdict::VerdictSG => get_message("SG"),
-                _ => get_message("XX"),
-            }
+            run_result.message = get_message(&run_result.status);
         }
 
         run_result
@@ -197,16 +188,15 @@ impl Submission {
             let mut args = vec![full_score.to_string()];
 
             let mut group_result =
-                GroupResult::from(*full_score, &self.submission_id, group_index as u64);
+                GroupResult::from(*full_score, &self.submission_id, (group_index + 1) as u64);
             for index in last_test..(last_test + tests) {
                 let run_result = if skip {
-                    RunResult::from(&self.submission_id, index)
+                    RunResult::from(&self.submission_id, index, 0.0, 0)
                 } else {
                     self.run_each(&checker, &runner, index)
                 };
                 args.push(run_result.score.to_string());
-                skip = run_result.status != TestCaseVerdict::VerdictCorrect
-                    && run_result.status != TestCaseVerdict::VerdictPCorrect;
+                skip = &run_result.status != "Correct" && &run_result.status != "Partially Correct";
 
                 group_result.run_result.push(run_result);
             }
@@ -231,9 +221,6 @@ impl Submission {
             submission_id: self.submission_id.clone(),
             group_result: group_results,
         }
-        // } else {
-
-        // }
     }
 }
 

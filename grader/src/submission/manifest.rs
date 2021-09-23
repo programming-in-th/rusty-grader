@@ -17,7 +17,7 @@ pub struct Manifest {
 impl Manifest {
     pub fn from(path: PathBuf) -> Self {
         let yaml = load_yaml(path);
-        let mut manifest: Manifest = Manifest {
+        let mut manifest = Manifest {
             task_id: yaml["task_id"].as_str().unwrap().to_owned(),
             output_only: yaml["output_only"].as_bool().unwrap_or(false),
             time_limit: yaml["time_limit"].as_f64(),

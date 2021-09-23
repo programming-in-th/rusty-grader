@@ -101,8 +101,7 @@ fn should_read_log_correctly_when_ok() {
         memory_limit: 4000
     };
 
-    let result = instance
-        .get_result();
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -127,8 +126,7 @@ fn should_trigger_when_read_log_with_re() {
         memory_limit: 4000
     };
 
-    let result = instance
-        .get_result();
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -153,8 +151,7 @@ fn should_trigger_when_read_log_with_to() {
         memory_limit: 4000
     };
 
-    let result = instance
-        .get_result();
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -179,8 +176,7 @@ fn should_trigger_when_read_log_with_sg() {
         memory_limit: 4000
     };
 
-    let result = instance
-        .get_result();
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -205,8 +201,7 @@ fn should_trigger_when_read_log_with_xx() {
         memory_limit: 4000
     };
 
-    let result = instance
-        .get_result();
+    let result = instance.get_result();
 
     assert_eq!(
         result,
@@ -230,8 +225,7 @@ fn should_trigger_when_read_log_with_mle() {
         memory_limit: 1000
     };
 
-    let result = instance
-        .get_result();
+    let result = instance.get_result();
 
     assert_eq!(
         result,
