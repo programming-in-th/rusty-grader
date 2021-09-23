@@ -16,9 +16,9 @@ fn should_complete_initialize_instance() {
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
-        bin_path: tmp_dir.0.clone().join("bin"),
+        bin_path: tmp_dir.0.join("bin"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
-        output_path: tmp_dir.0.clone().join("output.txt"),
+        output_path: tmp_dir.0.join("output.txt"),
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
@@ -38,7 +38,7 @@ fn should_error_if_input_path_is_wrong() {
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
-        bin_path: tmp_dir.0.clone().join("bin"),
+        bin_path: tmp_dir.0.join("bin"),
         input_path: base_dir.join("input_wrong_path"),
         runner_path: base_dir.join("run_cpp")
     };
@@ -59,7 +59,7 @@ fn should_error_if_output_path_is_wrong() {
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
-        bin_path: tmp_dir.0.clone().join("bin_wrong_path"),
+        bin_path: tmp_dir.0.join("bin_wrong_path"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: base_dir.join("run_cpp")
     };
@@ -80,7 +80,7 @@ fn should_error_if_runner_path_is_wrong() {
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
-        bin_path: tmp_dir.0.clone().join("bin"),
+        bin_path: tmp_dir.0.join("bin"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: base_dir.join("run_cpp_wrong_path")
     };
@@ -248,9 +248,9 @@ fn should_get_ok() {
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
-        bin_path: tmp_dir.0.clone().join("bin"),
+        bin_path: tmp_dir.0.join("bin"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
-        output_path: tmp_dir.0.clone().join("output.txt"),
+        output_path: tmp_dir.0.join("output.txt"),
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
@@ -272,7 +272,7 @@ fn should_get_tle() {
     let mut instance = instance! {
         time_limit: 0.1,
         memory_limit: 512000,
-        bin_path: tmp_dir.0.clone().join("bin"),
+        bin_path: tmp_dir.0.join("bin"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
@@ -295,7 +295,7 @@ fn should_get_re() {
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 512000,
-        bin_path: tmp_dir.0.clone().join("bin"),
+        bin_path: tmp_dir.0.join("bin"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
@@ -318,7 +318,7 @@ fn should_get_mle() {
     let mut instance = instance! {
         time_limit: 1.0,
         memory_limit: 1,
-        bin_path: tmp_dir.0.clone().join("bin"),
+        bin_path: tmp_dir.0.join("bin"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };

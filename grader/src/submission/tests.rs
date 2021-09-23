@@ -15,7 +15,7 @@ fn should_complete_initialize_submission() {
         task_id: s!("a_plus_b"),
         submission_id: s!("000000"),
         language: s!("cpp"),
-        code: vec![code.clone()]
+        code: vec![code]
     };
 
     submission.init();
@@ -31,7 +31,7 @@ fn should_parse_manifest_successfully() {
         task_id: s!("a_plus_b"),
         submission_id: s!("000001"),
         language: s!("cpp"),
-        code: vec![code.clone()]
+        code: vec![code]
     };
 
     submission.init();
@@ -49,7 +49,7 @@ fn should_compile_cpp_successfully() {
         task_id: s!("a_plus_b"),
         submission_id: s!("000002"),
         language: s!("cpp"),
-        code: vec![code.clone()]
+        code: vec![code]
     };
 
     submission.init();
@@ -66,7 +66,7 @@ fn should_compile_python_successfully() {
         task_id: s!("a_plus_b"),
         submission_id: s!("000003"),
         language: s!("python"),
-        code: vec![code.clone()]
+        code: vec![code]
     };
 
     submission.init();
@@ -83,7 +83,7 @@ fn should_compile_rust_successfully() {
         task_id: s!("a_plus_b"),
         submission_id: s!("000004"),
         language: s!("rust"),
-        code: vec![code.clone()]
+        code: vec![code]
     };
 
     submission.init();
@@ -100,7 +100,7 @@ fn should_run_cpp_successfully() {
         task_id: s!("a_plus_b"),
         submission_id: s!("000005"),
         language: s!("cpp"),
-        code: vec![code.clone()]
+        code: vec![code]
     };
 
     submission.init();

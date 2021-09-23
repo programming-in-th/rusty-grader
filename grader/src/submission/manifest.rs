@@ -1,7 +1,7 @@
 use crate::utils::load_yaml;
 use std::{collections::BTreeMap, path::PathBuf};
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct Manifest {
     pub task_id: String,
     pub output_only: bool,

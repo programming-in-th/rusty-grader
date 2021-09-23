@@ -12,7 +12,7 @@ pub mod result;
 #[cfg(test)]
 mod tests;
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct Submission {
     pub task_id: String,
     pub submission_id: String,
@@ -38,7 +38,7 @@ impl Submission {
             let mut file = fs::File::create(&code_path).unwrap();
             file.write_all(code.as_bytes()).unwrap();
 
-            self.code_path.push(code_path.clone());
+            self.code_path.push(code_path);
         }
 
         self.task_path = get_base_path().join("tasks").join(&self.task_id);

@@ -6,7 +6,7 @@ use std::{fs, path::PathBuf, process::Command};
 mod tests;
 
 /// Instance define a single test case to run in isolated environment
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug)]
 pub struct Instance {
     pub box_path: PathBuf,
     pub log_file: PathBuf,
