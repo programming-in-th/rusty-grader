@@ -222,7 +222,7 @@ impl Submission {
         SubmissionResult {
             score: total_score,
             full_score: total_full_score,
-            submission_id: self.submission_id.to_owned(),
+            submission_id: &self.submission_id,
             group_result: group_results,
         }
     }
