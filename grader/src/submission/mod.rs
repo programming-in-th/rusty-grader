@@ -13,10 +13,10 @@ pub mod result;
 mod tests;
 
 #[derive(Default, Debug)]
-pub struct Submission<'a> {
-    pub task_id: &'a str,
-    pub submission_id: &'a str,
-    pub language: &'a str,
+pub struct Submission {
+    pub task_id: String,
+    pub submission_id: String,
+    pub language: String,
     pub code_path: Vec<PathBuf>,
     pub task_manifest: Manifest,
     pub tmp_path: PathBuf,
@@ -24,17 +24,17 @@ pub struct Submission<'a> {
     pub bin_path: PathBuf,
 }
 
-impl<'a> Submission<'a> {
+impl Submission {
     pub fn from(
-        task_id: &'a str,
-        submission_id: &'a str,
-        language: &'a str,
-        code: &[&'a str],
+        task_id: String,
+        submission_id: String,
+        language: String,
+        code: &[String],
     ) -> Self {
-        let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(submission_id);
+        let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
         fs::create_dir(&tmp_path).unwrap();
-        let extension = get_code_extension(language);
-        let task_path = get_base_path().join("tasks").join(task_id);
+        let extension = get_code_extension(&language);
+        let task_path = get_base_path().join("tasks").join(&task_id);
         if task_path.join("compile_files").is_dir() {
             let entries = fs::read_dir(task_path.join("compile_files")).unwrap();
             for entry in entries {
@@ -64,7 +64,7 @@ impl<'a> Submission<'a> {
         let compiler_path = get_base_path()
             .join("scripts")
             .join("compile_scripts")
-            .join(self.language);
+            .join(&self.language);
 
         let mut args = vec![&self.tmp_path];
         self.code_path.iter().for_each(|path| {
@@ -74,7 +74,7 @@ impl<'a> Submission<'a> {
         let mut tmp_compile_files = vec![];
 
         if let Some(compile_files) = &self.task_manifest.compile_files {
-            for compile_file in compile_files.get(self.language).unwrap() {
+            for compile_file in compile_files.get(&self.language).unwrap() {
                 tmp_compile_files.push(self.task_path.join(&compile_file));
             }
         }
@@ -123,7 +123,7 @@ impl<'a> Submission<'a> {
         let instance_result = instance.run();
 
         let mut run_result = RunResult::from(
-            &self.submission_id,
+            self.submission_id.to_owned(),
             index,
             instance_result.time_usage,
             instance_result.memory_usage,
@@ -199,10 +199,10 @@ impl<'a> Submission<'a> {
             let mut args = vec![full_score.to_string()];
 
             let mut group_result =
-                GroupResult::from(*full_score, self.submission_id, (group_index + 1) as u64);
+                GroupResult::from(*full_score, self.submission_id.to_owned(), (group_index + 1) as u64);
             for index in last_test..(last_test + tests) {
                 let run_result = if skip {
-                    RunResult::from(&self.submission_id, index, 0.0, 0)
+                    RunResult::from(self.submission_id.to_owned(), index, 0.0, 0)
                 } else {
                     self.run_each(&checker, &runner, index)
                 };
@@ -229,13 +229,13 @@ impl<'a> Submission<'a> {
         SubmissionResult {
             score: total_score,
             full_score: total_full_score,
-            submission_id: self.submission_id,
+            submission_id: self.submission_id.to_owned(),
             group_result: group_results,
         }
     }
 }
 
-impl<'a> Drop for Submission<'a> {
+impl Drop for Submission {
     fn drop(&mut self) {
         fs::remove_dir_all(&self.tmp_path).expect("Unable to remove submission folder.");
     }

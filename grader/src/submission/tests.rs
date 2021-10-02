@@ -10,7 +10,7 @@ fn should_complete_initialize_submission() {
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
-    let _submission = Submission::from("a_plus_b", "000000", "cpp", &[&code]);
+    let _submission = Submission::from("a_plus_b".to_string(), "000000".to_string(), "cpp".to_string(), &[code]);
 }
 
 // #[test]
