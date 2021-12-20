@@ -25,12 +25,7 @@ pub struct Submission {
 }
 
 impl Submission {
-    pub fn from(
-        task_id: String,
-        submission_id: String,
-        language: String,
-        code: &[String],
-    ) -> Self {
+    pub fn from(task_id: String, submission_id: String, language: String, code: &[String]) -> Self {
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
         fs::create_dir(&tmp_path).unwrap();
         let extension = get_code_extension(&language);
@@ -46,13 +41,18 @@ impl Submission {
             task_id,
             submission_id,
             language,
-            code_path: code.iter().enumerate().map(|(idx, val)| {
-                let code_path = tmp_path.join(format!("code_{}.{}", &idx.to_string(), &extension));
-                let mut file = fs::File::create(&code_path).unwrap();
-                file.write_all(val.as_bytes()).unwrap();
+            code_path: code
+                .iter()
+                .enumerate()
+                .map(|(idx, val)| {
+                    let code_path =
+                        tmp_path.join(format!("code_{}.{}", &idx.to_string(), &extension));
+                    let mut file = fs::File::create(&code_path).unwrap();
+                    file.write_all(val.as_bytes()).unwrap();
 
-                code_path
-            }).collect(),
+                    code_path
+                })
+                .collect(),
             task_manifest: Manifest::from(task_path.join("manifest.yaml")),
             tmp_path,
             task_path,
@@ -75,7 +75,7 @@ impl Submission {
 
         if let Some(compile_files) = &self.task_manifest.compile_files {
             for compile_file in compile_files.get(&self.language).unwrap() {
-                tmp_compile_files.push(self.task_path.join(&compile_file));
+                tmp_compile_files.push(self.tmp_path.join(&compile_file));
             }
         }
 
@@ -198,8 +198,11 @@ impl Submission {
             let mut skip = false;
             let mut args = vec![full_score.to_string()];
 
-            let mut group_result =
-                GroupResult::from(*full_score, self.submission_id.to_owned(), (group_index + 1) as u64);
+            let mut group_result = GroupResult::from(
+                *full_score,
+                self.submission_id.to_owned(),
+                (group_index + 1) as u64,
+            );
             for index in last_test..(last_test + tests) {
                 let run_result = if skip {
                     RunResult::from(self.submission_id.to_owned(), index, 0.0, 0)

@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::s;
 use crate::utils::tests::get_example_dir;
 use dotenv::dotenv;
 use std::fs;
@@ -10,92 +11,194 @@ fn should_complete_initialize_submission() {
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
-    let _submission = Submission::from("a_plus_b".to_string(), "000000".to_string(), "cpp".to_string(), &[code]);
+    let _submission = Submission::from(
+        "a_plus_b".to_string(),
+        "000000".to_string(),
+        "cpp".to_string(),
+        &[code],
+    );
 }
 
-// #[test]
-// fn should_parse_manifest_successfully() {
-//     dotenv().ok();
+#[test]
+fn should_compile_cpp_successfully() {
+    dotenv().ok();
 
-//     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
-//     let mut submission = submission! {
-//         task_id: s!("a_plus_b"),
-//         submission_id: s!("000001"),
-//         language: s!("cpp"),
-//         code: vec![code]
-//     };
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000001"), s!("cpp"), &vec![code]);
+    submission.compile();
+}
 
-//     submission.init();
+#[test]
+fn should_compile_python_successfully() {
+    dotenv().ok();
 
-//     assert_eq!(&submission.task_manifest.task_id, "a_plus_b")
-// }
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py")).unwrap();
 
-// #[test]
-// fn should_compile_cpp_successfully() {
-//     dotenv().ok();
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000002"), s!("python"), &vec![code]);
+    submission.compile();
+}
 
-//     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
+#[test]
+fn should_compile_rust_successfully() {
+    dotenv().ok();
 
-//     let mut submission = submission! {
-//         task_id: s!("a_plus_b"),
-//         submission_id: s!("000002"),
-//         language: s!("cpp"),
-//         code: vec![code]
-//     };
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.rs")).unwrap();
 
-//     submission.init();
-//     submission.compile();
-// }
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000003"), s!("rust"), &vec![code]);
+    submission.compile();
+}
 
-// #[test]
-// fn should_compile_python_successfully() {
-//     dotenv().ok();
+#[test]
+fn should_remove_tmp_dir_after_out_of_scope() {
+    dotenv().ok();
 
-//     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py")).unwrap();
+    let tmp_path;
+    {
+        let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
-//     let mut submission = submission! {
-//         task_id: s!("a_plus_b"),
-//         submission_id: s!("000003"),
-//         language: s!("python"),
-//         code: vec![code]
-//     };
+        let mut submission = Submission::from(s!("a_plus_b"), s!("000004"), s!("cpp"), &vec![code]);
+        submission.compile();
+        tmp_path = submission.tmp_path.clone();
+    }
 
-//     submission.init();
-//     submission.compile();
-// }
+    assert!(!tmp_path.exists());
+}
 
-// #[test]
-// fn should_compile_rust_successfully() {
-//     dotenv().ok();
+#[test]
+fn should_run_cpp_successfully() {
+    dotenv().ok();
 
-//     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.rs")).unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
-//     let mut submission = submission! {
-//         task_id: s!("a_plus_b"),
-//         submission_id: s!("000004"),
-//         language: s!("rust"),
-//         code: vec![code]
-//     };
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000005"), s!("cpp"), &vec![code]);
+    submission.compile();
 
-//     submission.init();
-//     submission.compile();
-// }
+    let _result = submission.run();
+    assert_eq!(_result.score, 100.0);
+}
 
-// #[test]
-// fn should_run_cpp_successfully() {
-//     dotenv().ok();
+#[test]
+fn should_run_cpp_tle_skipped() {
+    dotenv().ok();
 
-//     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_TLE.cpp")).unwrap();
 
-//     let mut submission = submission! {
-//         task_id: s!("a_plus_b"),
-//         submission_id: s!("000005"),
-//         language: s!("cpp"),
-//         code: vec![code]
-//     };
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000006"), s!("cpp"), &vec![code]);
+    submission.compile();
 
-//     submission.init();
-//     submission.compile();
-//     let _result = submission.run();
-// }
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Time Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Time Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_cpp_mle_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_MLE.cpp")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000007"), s!("cpp"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Memory Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Memory Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_cpp_re_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_RE.cpp")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000008"), s!("cpp"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Runtime Error")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Runtime Error")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_cpp_sg_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_SG.cpp")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000009"), s!("cpp"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Signal Error")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Signal Error")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_cpp_with_header_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_h.cpp")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b_h"), s!("000010"), s!("cpp"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+    assert_eq!(_result.score, 100.0);
+}

@@ -1,0 +1,13 @@
+task_id: "a_plus_b_h"
+time_limit: 1.0
+memory_limit: 32
+checker: "lcmp"
+grouper: "min"
+groups:
+  - full_score: 60
+    tests: 3
+  - full_score: 40
+    tests: 2
+compile_files:
+    cpp:
+        - "grader.cpp"
