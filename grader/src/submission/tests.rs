@@ -202,3 +202,225 @@ fn should_run_cpp_with_header_successfully() {
     let _result = submission.run();
     assert_eq!(_result.score, 100.0);
 }
+
+#[test]
+fn should_run_python_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000011"), s!("python"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+    assert_eq!(_result.score, 100.0);
+}
+
+#[test]
+fn should_run_python_tle_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_TLE.py")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000012"), s!("python"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Time Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Time Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_python_mle_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_MLE.py")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000013"), s!("python"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Memory Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Memory Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_python_re_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_RE.py")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000014"), s!("python"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Runtime Error")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Runtime Error")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_rust_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.rs")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000015"), s!("rust"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+    assert_eq!(_result.score, 100.0);
+}
+
+#[test]
+fn should_run_rust_tle_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_TLE.rs")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000016"), s!("rust"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Time Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Time Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_rust_mle_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_MLE.rs")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000017"), s!("rust"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Memory Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Memory Limit Exceeded")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_rust_re_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_RE.rs")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000018"), s!("rust"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Runtime Error")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Runtime Error")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
+
+#[test]
+fn should_run_rust_sg_skipped() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_SG.rs")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000019"), s!("rust"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+
+    assert_eq!(_result.score, 0.0);
+
+    assert_eq!(_result.group_result[0].score, 0.0);
+    assert_eq!(
+        _result.group_result[0].run_result[0].status,
+        s!("Signal Error")
+    );
+    assert_eq!(_result.group_result[0].run_result[1].status, s!(""));
+
+    assert_eq!(_result.group_result[1].score, 0.0);
+    assert_eq!(
+        _result.group_result[1].run_result[0].status,
+        s!("Signal Error")
+    );
+    assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+}
