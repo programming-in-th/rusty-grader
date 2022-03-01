@@ -5,6 +5,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -18,6 +19,6 @@ jobs:
       - name: Checkout submodules
         run: git submodule update --init --recursive
       - name: Setup environment
-        run: sudo sh setup.sh
+        run: ./setup.sh
       - name: Run tests
         run: sudo cargo test --verbose

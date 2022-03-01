@@ -1,5 +1,6 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
+red=$(tput setaf 1)
 green=$(tput setaf 2)
 blue=$(tput setaf 4)
 normal=$(tput sgr0)
@@ -8,10 +9,10 @@ SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
 
 echo "${green}Cloning Submodule${normal}"
-git -C ${SCRIPTPATH} submodule update --init --recursive
+git -C ${SCRIPTPATH} submodule update --init --recursive --depth 1
 
-echo "${green}Setting up isolate's package${normal}"
-apt install make gcc libcap-dev
+echo "${green}Setting up compilers and dependencies${normal}"
+sudo apt-get install --no-install-recommends -y build-essential cargo openjdk-17-jdk libcap-dev sysfsutils
 
 echo "Setting up isolate..."
 echo 0 > /proc/sys/kernel/randomize_va_space
@@ -19,12 +20,23 @@ echo never > /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/defrag
 echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
 
-make -C ${SCRIPTPATH}/isolate isolate
-cp ${SCRIPTPATH}/isolate/isolate /usr/local/bin/isolate
-cp ${SCRIPTPATH}/isolate/default.cf /usr/local/etc/isolate
+if ! grep -Fxq "kernel.randomize_va_space = 0" /etc/sysctl.d/10-isolate.conf; then
+  sudo sh -c 'echo "kernel.randomize_va_space = 0" >> /etc/sysctl.d/10-isolate.conf'
+fi
+if ! grep -Fxq "kernel/mm/transparent_hugepage/enabled = never" /etc/sysfs.conf; then
+  sudo sh -c 'echo "kernel/mm/transparent_hugepage/enabled = never" >> /etc/sysfs.conf'
+fi
+if ! grep -Fxq "kernel/mm/transparent_hugepage/defrag = never" /etc/sysfs.conf; then
+  sudo sh -c 'echo "kernel/mm/transparent_hugepage/defrag = never" >> /etc/sysfs.conf'
+fi
+if ! grep -Fxq "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" /etc/sysfs.conf; then
+  sudo sh -c 'echo "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" >> /etc/sysfs.conf'
+fi
 
-echo "${green}Setting up C++ compiler and Rust's cargo${normal}"
-apt install g++ cargo
+sudo systemctl enable --now sysfsutils.service
+
+make -C ${SCRIPTPATH}/isolate isolate
+sudo make -C ${SCRIPTPATH}/isolate install
 
 echo "${green}Setting up .env${normal}"
 
@@ -33,7 +45,7 @@ echo ALTERNATIVE_PATH=\"/etc/alternatives\" >> .env
 echo TEMPORARY_PATH=\"/tmp\" >> .env
 echo BASE_PATH=\"$(pwd)/example\" >> .env
 
-echo "${green}Compiling checkers${normal}\n"
+echo "${green}Compiling checkers${normal}"
 
 CHECKER_PATH=${SCRIPTPATH}/example/scripts/checker_scripts
 
@@ -50,3 +62,5 @@ do
     g++ -std=c++11 ${file} -O2 -o ${CHECKER_PATH}/${filename} -I ${SCRIPTPATH}/testlib
   fi
 done
+
+echo "${red}You should reboot your system to apply the kernel paremeters change for isolate${normal}"
