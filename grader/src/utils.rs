@@ -7,14 +7,7 @@ pub fn get_env(name: &'static str) -> String {
 }
 
 pub fn get_base_path() -> PathBuf {
-    env::var("BASE_PATH").map_or(
-        env::current_dir()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("example"),
-        PathBuf::from,
-    )
+    PathBuf::from(env::var("BASE_PATH").unwrap())
 }
 
 pub fn load_yaml(path: PathBuf) -> Yaml {

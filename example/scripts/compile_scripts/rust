@@ -10,7 +10,11 @@ for i in range(2, len(sys.argv)):
 
 output_path = os.path.join(base_dir, "bin")
 # NOTE: rustc only accepts the .rs file containing main.rs so make sure it is at position 0
-cmd = ["/usr/bin/rustc", "-O", "-o", output_path, compile_files[0]]
+
+compiler_cmd = ["which", "rustc"]
+capture = subprocess.run(compiler_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+cmd = [capture.stdout.decode("utf-8").strip(), "-O", "-o", output_path, compile_files[0]]
 
 capture = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 

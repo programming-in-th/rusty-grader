@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 green=$(tput setaf 2)
 blue=$(tput setaf 4)
@@ -24,7 +24,16 @@ cp ${SCRIPTPATH}/isolate/isolate /usr/local/bin/isolate
 cp ${SCRIPTPATH}/isolate/default.cf /usr/local/etc/isolate
 
 echo "${green}Setting up C++ compiler and Rust's cargo${normal}"
-apt install g++ cargo
+apt install g++
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+source $HOME/.cargo/env
+
+echo "${green}Setting up .env${normal}"
+
+echo ISOLATE_PATH=\"/usr/local/bin/isolate\" >> .env
+echo ALTERNATIVE_PATH=\"/etc/alternatives\" >> .env
+echo TEMPORARY_PATH=\"/tmp\" >> .env
+echo BASE_PATH=\"$(pwd)/example\" >> .env
 
 echo "${green}Compiling checkers${normal}\n"
 
