@@ -73,14 +73,14 @@ impl Instance {
             "input",
             "-o",
             "output",
-            "--run",
-            "--",
-            "runner",
+            "--processes=128",
             "--cg",
             "--cg-timing",
-            "--processes=128",
             format!("--cg-mem={}", self.memory_limit),
-            format!("--dir={}", get_env("ALTERNATIVE_PATH"))
+            format!("--dir={}", get_env("ALTERNATIVE_PATH")),
+            "--run",
+            "--",
+            "runner"
         ]
     }
 
@@ -101,7 +101,7 @@ impl Instance {
                         }
                     }
                     "time" => result.time_usage = args[1].parse().unwrap(),
-                    "max-rss" => result.memory_usage = args[1].parse().unwrap(),
+                    "cg-mem" => result.memory_usage = args[1].parse().unwrap(),
                     _ => (),
                 }
             }
