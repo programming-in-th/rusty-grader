@@ -12,6 +12,7 @@ echo "${green}Cloning Submodule${normal}"
 git -C ${SCRIPTPATH} submodule update --init --recursive --depth 1
 
 echo "${green}Setting up compilers and dependencies${normal}"
+sudo apt-get update -y
 sudo apt-get install --no-install-recommends -y build-essential cargo openjdk-17-jdk libcap-dev sysfsutils
 
 echo "Setting up isolate..."
