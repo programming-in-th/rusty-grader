@@ -1,0 +1,69 @@
+#!/usr/bin/python3
+import os
+import subprocess
+import sys
+import re
+
+base_dir = sys.argv[1]
+source_file = sys.argv[2]
+
+class_name = source_file.split("/")[-1].split(".")[0]
+lines = []
+with open(source_file, "r+") as file:
+    for line in file.readlines():
+        if re.match(r"[ \t]*public[ \t]+class[ \t]*", line):
+            lines.append("public class " + class_name + " {\n")
+        else:
+            lines.append(line)
+
+with open(source_file, "w+") as file:
+    file.writelines(lines)
+
+
+f = open(os.path.join(base_dir, "compileMsg"), "w")
+mkdir_capture = subprocess.run(
+    ['/bin/mkdir', os.path.join(base_dir, 'classes')],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT)
+
+f.write(mkdir_capture.stdout.decode("utf-8") + "\n")
+if mkdir_capture.returncode != 0:
+    print(1)
+    f.close()
+    sys.exit(0)
+
+javac_capture = subprocess.run(
+    ['/usr/lib/jvm/java-11-openjdk-amd64/bin/javac', '-d',
+     os.path.join(base_dir, 'classes'), source_file],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT)
+
+f.write(javac_capture.stdout.decode("utf-8") + "\n")
+if javac_capture.returncode != 0:
+    print(1)
+    f.close()
+    sys.exit(0)
+
+manifest = open(os.path.join(base_dir, "Manifest"), "w")
+manifest.write("Main-Class: "+ class_name + "\n")
+manifest.close()
+
+jar_capture = subprocess.run([
+    '/usr/bin/jar', 'cvmf',
+    os.path.join(base_dir, 'Manifest'),
+    os.path.join(base_dir, 'run.jar'), '-C',
+    os.path.join(base_dir, 'classes'), '.'
+],
+                             stdout=subprocess.PIPE,
+                             stderr=subprocess.STDOUT)
+
+f.write(jar_capture.stdout.decode("utf-8") + "\n")
+if jar_capture.returncode != 0:
+    print(1)
+    f.close()
+    sys.exit(0)
+
+f.close()
+
+print(0)
+print(os.path.join(base_dir, 'run.jar'))

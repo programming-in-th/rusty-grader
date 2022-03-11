@@ -1,0 +1,23 @@
+#!/usr/bin/python3
+import os
+import subprocess
+import sys
+
+base_dir = sys.argv[1]
+compile_files = []
+for i in range(2, len(sys.argv)):
+    compile_files.append(sys.argv[i])
+
+output_path = os.path.join(base_dir, "bin")
+cmd = [
+    "/usr/bin/go", "build",
+    "-o", output_path, *compile_files,
+]
+
+capture = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+f = open(os.path.join(base_dir, "compileMsg"), "w")
+f.write(capture.stdout.decode("utf-8"))
+f.close()
+print(capture.returncode)
+print(output_path)

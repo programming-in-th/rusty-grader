@@ -1,0 +1,2 @@
+#!/usr/bin/bash
+exec -c /usr/lib/jvm/java-11-openjdk-amd64/bin/java -jar run.jar
