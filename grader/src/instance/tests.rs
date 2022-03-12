@@ -107,8 +107,8 @@ fn should_read_log_correctly_when_ok() {
         result,
         InstanceResult {
             status: RunVerdict::VerdictOK,
-            time_usage: 0.004,
-            memory_usage: 3196,
+            time_usage: 0.002,
+            memory_usage: 480,
         }
     );
 }
@@ -133,7 +133,7 @@ fn should_trigger_when_read_log_with_re() {
         InstanceResult {
             status: RunVerdict::VerdictRE,
             time_usage: 0.002,
-            memory_usage: 3056,
+            memory_usage: 460,
         }
     );
 }
@@ -157,8 +157,8 @@ fn should_trigger_when_read_log_with_to() {
         result,
         InstanceResult {
             status: RunVerdict::VerdictTLE,
-            time_usage: 2.095,
-            memory_usage: 3076,
+            time_usage: 2.099,
+            memory_usage: 448,
         }
     );
 }
@@ -182,8 +182,8 @@ fn should_trigger_when_read_log_with_sg() {
         result,
         InstanceResult {
             status: RunVerdict::VerdictSG,
-            time_usage: 0.002,
-            memory_usage: 3004,
+            time_usage: 0.006,
+            memory_usage: 448,
         }
     );
 }
@@ -216,7 +216,7 @@ fn should_trigger_when_read_log_with_xx() {
 fn should_trigger_when_read_log_with_mle() {
     dotenv().ok();
 
-    let test_log = get_example_dir().join("etc").join("log_ok.txt");
+    let test_log = get_example_dir().join("etc").join("log_mle.txt");
     let tmp_log = get_tmp_path().join("test_log_mle.txt");
     fs::copy(&test_log, &tmp_log).unwrap();
 
@@ -231,8 +231,8 @@ fn should_trigger_when_read_log_with_mle() {
         result,
         InstanceResult {
             status: RunVerdict::VerdictMLE,
-            time_usage: 0.004,
-            memory_usage: 3196,
+            time_usage: 0.090,
+            memory_usage: 1000,
         }
     );
 }
@@ -313,11 +313,11 @@ fn should_get_mle() {
     let base_dir = get_example_dir().join("etc");
     let tmp_dir = TempDir::new("should_get_mle");
 
-    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b.cpp"));
+    compile_cpp(&tmp_dir.0, &base_dir.join("a_plus_b_MLE.cpp"));
 
     let mut instance = instance! {
         time_limit: 1.0,
-        memory_limit: 1,
+        memory_limit: 32,
         bin_path: tmp_dir.0.join("bin"),
         input_path: get_example_dir().join("tasks").join("a_plus_b").join("testcases").join("1.in"),
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")

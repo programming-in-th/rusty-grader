@@ -87,6 +87,7 @@ impl Instance {
     pub fn get_result(&self) -> InstanceResult {
         let log_content = fs::read_to_string(&self.log_file).unwrap();
         let mut result: InstanceResult = Default::default();
+        let mut memory_limit_exceeded = false;
         for log_line in log_content.lines() {
             let args: Vec<&str> = log_line.split(':').collect();
             if args.len() >= 2 {
@@ -102,11 +103,12 @@ impl Instance {
                     }
                     "time" => result.time_usage = args[1].parse().unwrap(),
                     "cg-mem" => result.memory_usage = args[1].parse().unwrap(),
+                    "cg-oom-killed" => memory_limit_exceeded = args[1].trim() == "1",
                     _ => (),
                 }
             }
         }
-        if result.memory_usage > self.memory_limit && result.status == Default::default() {
+        if memory_limit_exceeded || result.memory_usage >= self.memory_limit && result.status == Default::default() {
             result.status = RunVerdict::VerdictMLE;
         }
         result
@@ -144,6 +146,10 @@ impl Instance {
 
     pub fn run(&self) -> InstanceResult {
         let args = self.get_run_arguments();
+        for i in args.iter() {
+            print!("{} ", i);
+        }
+        println!();
         Command::new(get_env("ISOLATE_PATH"))
             .args(args)
             .output()
