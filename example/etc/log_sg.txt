@@ -1,8 +1,9 @@
-time:0.002
-time-wall:0.134
-max-rss:3004
+time:0.006
+time-wall:0.116
+max-rss:2908
 csw-voluntary:5
 csw-forced:3
-exitsig:6
+cg-mem:448
+exitsig:11
 status:SG
-message:Caught fatal signal 6
+message:Caught fatal signal 11

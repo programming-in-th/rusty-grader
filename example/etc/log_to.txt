@@ -1,8 +1,9 @@
 status:TO
 message:Time limit exceeded
 killed:1
-time:2.095
+time:2.099
 time-wall:2.100
-max-rss:3076
+max-rss:844
 csw-voluntary:3
-csw-forced:93
+csw-forced:0
+cg-mem:448

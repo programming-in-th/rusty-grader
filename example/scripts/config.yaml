@@ -5,6 +5,10 @@ language:
     extension: "py"
   - id: "rust"
     extension: "rs"
+  - id: "go"
+    extension: "go"
+  - id: "java"
+    extension: "java"
 message:
   Correct: "Output is correct"
   Partially Correct: "Output is partially correct"

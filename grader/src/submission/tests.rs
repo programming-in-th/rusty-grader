@@ -424,3 +424,50 @@ fn should_run_rust_sg_skipped() {
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
 }
+
+
+#[test]
+fn should_compile_go_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.go")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000020"), s!("go"), &vec![code]);
+    submission.compile();
+}
+
+#[test]
+fn should_run_go_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.go")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000021"), s!("go"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+    assert_eq!(_result.score, 100.0);
+}
+
+#[test]
+fn should_compile_java_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.java")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000022"), s!("java"), &vec![code]);
+    submission.compile();
+}
+
+#[test]
+fn should_run_java_successfully() {
+    dotenv().ok();
+
+    let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.java")).unwrap();
+
+    let mut submission = Submission::from(s!("a_plus_b"), s!("000023"), s!("java"), &vec![code]);
+    submission.compile();
+
+    let _result = submission.run();
+    assert_eq!(_result.score, 100.0);
+}
