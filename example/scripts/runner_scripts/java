@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-JAVA_PATH=$(readlink -f `which javac`)
+JAVA_PATH=$(readlink -f `which java`)
 exec -c $JAVA_PATH -jar run.jar
