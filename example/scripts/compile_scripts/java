@@ -32,8 +32,16 @@ if mkdir_capture.returncode != 0:
     f.close()
     sys.exit(0)
 
+javac_symlink = subprocess.run(["which", "javac"],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.STDOUT)
+
+javac_path = subprocess.run(["readlink", "-f", javac_symlink.stdout.decode("utf-8").strip()],
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT).stdout.decode("utf-8").strip()
+
 javac_capture = subprocess.run(
-    ['/usr/lib/jvm/java-11-openjdk-amd64/bin/javac', '-d',
+    [javac_path, '-d',
      os.path.join(base_dir, 'classes'), source_file],
     stdout=subprocess.PIPE,
     stderr=subprocess.STDOUT)
@@ -45,7 +53,7 @@ if javac_capture.returncode != 0:
     sys.exit(0)
 
 manifest = open(os.path.join(base_dir, "Manifest"), "w")
-manifest.write("Main-Class: "+ class_name + "\n")
+manifest.write("Main-Class: " + class_name + "\n")
 manifest.close()
 
 jar_capture = subprocess.run([
@@ -54,8 +62,8 @@ jar_capture = subprocess.run([
     os.path.join(base_dir, 'run.jar'), '-C',
     os.path.join(base_dir, 'classes'), '.'
 ],
-                             stdout=subprocess.PIPE,
-                             stderr=subprocess.STDOUT)
+    stdout=subprocess.PIPE,
+    stderr=subprocess.STDOUT)
 
 f.write(jar_capture.stdout.decode("utf-8") + "\n")
 if jar_capture.returncode != 0:

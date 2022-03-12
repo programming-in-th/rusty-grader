@@ -1,2 +1,3 @@
-#!/usr/bin/bash
-exec -c /usr/lib/jvm/java-11-openjdk-amd64/bin/java -jar run.jar
+#!/usr/bin/env bash
+JAVA_PATH=$(readlink -f `which javac`)
+exec -c $JAVA_PATH -jar run.jar
