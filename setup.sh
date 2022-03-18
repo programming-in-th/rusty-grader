@@ -7,7 +7,7 @@ normal=$(tput sgr0)
 
 SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
-ISOLATE_GROUPNAME=`isolate`
+ISOLATE_GROUPNAME="isolate"
 
 echo "${green}Cloning Submodule${normal}"
 git -C ${SCRIPTPATH} submodule update --init --recursive --depth 1
@@ -16,7 +16,7 @@ echo "${green}Setting up compilers and dependencies${normal}"
 sudo apt-get update -y
 sudo apt-get install --no-install-recommends -y build-essential cargo openjdk-17-jdk libcap-dev sysfsutils golang
 
-echo "Setting up isolate..."
+echo "${green}Setting up isolate...${green}"
 echo 0 > /proc/sys/kernel/randomize_va_space
 echo never > /sys/kernel/mm/transparent_hugepage/enabled
 echo never > /sys/kernel/mm/transparent_hugepage/defrag
@@ -39,9 +39,12 @@ sudo systemctl enable --now sysfsutils.service
 
 make -C ${SCRIPTPATH}/isolate isolate
 sudo make -C ${SCRIPTPATH}/isolate install
+
+echo "${green}Adding ${USERNAME} to ${ISOLATE_GROUPNAME} group${green}"
 sudo groupadd ${ISOLATE_GROUPNAME} 
-sudo usermod -aG ${ISOLATE_GROUPNAME} $USERNAME
+sudo usermod -aG ${ISOLATE_GROUPNAME} ${USERNAME}
 sudo chown root:${ISOLATE_GROUPNAME} /usr/local/bin/isolate
+sudo chmod 750 /usr/local/bin/isolate
 
 echo "${green}Setting up .env${normal}"
 
