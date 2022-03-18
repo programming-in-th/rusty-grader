@@ -12,6 +12,20 @@ pub mod result;
 #[cfg(test)]
 mod tests;
 
+#[derive(Debug)]
+pub enum SubmissionStatus {
+    Compiling,
+    CompilationError(String),
+    Running(u32),
+    Done(RunVerdict),
+}
+#[derive(Debug)]
+pub enum SubmissionMessage {
+    Status(SubmissionStatus),
+    RunResult(RunResult),
+    GroupResult(GroupResult),
+}
+
 #[derive(Default, Debug)]
 pub struct Submission {
     pub task_id: String,
@@ -22,10 +36,11 @@ pub struct Submission {
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
     pub bin_path: PathBuf,
+    pub message: Option<fn(SubmissionMessage)>,
 }
 
 impl Submission {
-    pub fn from(task_id: String, submission_id: String, language: String, code: &[String]) -> Self {
+    pub fn from(task_id: String, submission_id: String, language: String, code: &[String], message: Option<fn(SubmissionMessage)>) -> Self {
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
         fs::create_dir(&tmp_path).unwrap();
         let extension = get_code_extension(&language);
@@ -57,6 +72,7 @@ impl Submission {
             tmp_path,
             task_path,
             bin_path: PathBuf::new(),
+            message,
         }
     }
 
