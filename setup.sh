@@ -7,6 +7,7 @@ normal=$(tput sgr0)
 
 SCRIPT=`realpath $0`
 SCRIPTPATH=`dirname $SCRIPT`
+ISOLATE_GROUPNAME=`isolate`
 
 echo "${green}Cloning Submodule${normal}"
 git -C ${SCRIPTPATH} submodule update --init --recursive --depth 1
@@ -38,6 +39,9 @@ sudo systemctl enable --now sysfsutils.service
 
 make -C ${SCRIPTPATH}/isolate isolate
 sudo make -C ${SCRIPTPATH}/isolate install
+sudo groupadd ${ISOLATE_GROUPNAME} 
+sudo usermod -aG ${ISOLATE_GROUPNAME} $USERNAME
+sudo chown root:${ISOLATE_GROUPNAME} /usr/local/bin/isolate
 
 echo "${green}Setting up .env${normal}"
 

@@ -21,4 +21,4 @@ jobs:
       - name: Setup environment
         run: ./setup.sh
       - name: Run tests
-        run: sudo cargo test --verbose
+        run: cargo test --verbose
