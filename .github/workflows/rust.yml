@@ -19,6 +19,6 @@ jobs:
       - name: Checkout submodules
         run: git submodule update --init --recursive
       - name: Setup environment
-        run: ./setup.sh
+        run: GITHUB_ACTIONS=1 ./setup.sh
       - name: Run tests
         run: cargo test --verbose

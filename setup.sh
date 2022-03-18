@@ -40,11 +40,17 @@ sudo systemctl enable --now sysfsutils.service
 make -C ${SCRIPTPATH}/isolate isolate
 sudo make -C ${SCRIPTPATH}/isolate install
 
-echo "${green}Adding ${USERNAME} to ${ISOLATE_GROUPNAME} group${green}"
 sudo groupadd ${ISOLATE_GROUPNAME} 
-sudo usermod -aG ${ISOLATE_GROUPNAME} ${USERNAME}
 sudo chown root:${ISOLATE_GROUPNAME} /usr/local/bin/isolate
-sudo chmod 750 /usr/local/bin/isolate
+if [ $GITHUB_ACTIONS -eq 1 ]; then
+  echo "${green}Setting isolate permissions to 777 for GitHub Actions${green}"
+  sudo chmod 4777 /usr/local/bin/isolate
+else
+  echo "${green}Adding ${USERNAME} to ${ISOLATE_GROUPNAME} group${green}"
+  sudo chmod 4750 /usr/local/bin/isolate
+  sudo usermod -aG ${ISOLATE_GROUPNAME} ${USERNAME}
+fi
+
 
 echo "${green}Setting up .env${normal}"
 
