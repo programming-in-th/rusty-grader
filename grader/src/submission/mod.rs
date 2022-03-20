@@ -14,18 +14,30 @@ mod tests;
 
 #[derive(Debug)]
 pub enum SubmissionStatus {
+    Initialized,
     Compiling,
+    Compiled,
     CompilationError(String),
-    Running(u32),
-    Done(RunVerdict),
+    Running(u64),
+    Done(SubmissionResult),
 }
+impl Default for SubmissionStatus {
+    fn default() -> Self {
+        SubmissionStatus::Initialized
+    }
+}
+
 #[derive(Debug)]
 pub enum SubmissionMessage {
     Status(SubmissionStatus),
     RunResult(RunResult),
     GroupResult(GroupResult),
 }
-
+impl Default for SubmissionMessage {
+    fn default() -> Self {
+        SubmissionMessage::Status(SubmissionStatus::Initialized)
+    }
+}
 #[derive(Default, Debug)]
 pub struct Submission {
     pub task_id: String,
@@ -36,11 +48,11 @@ pub struct Submission {
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
     pub bin_path: PathBuf,
-    pub message: Option<fn(SubmissionMessage)>,
+    pub message_handler: Option<fn(SubmissionMessage)>,
 }
 
 impl Submission {
-    pub fn from(task_id: String, submission_id: String, language: String, code: &[String], message: Option<fn(SubmissionMessage)>) -> Self {
+    pub fn from(task_id: String, submission_id: String, language: String, code: &[String], message_handler: Option<fn(SubmissionMessage)>) -> Self {
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
         fs::create_dir(&tmp_path).unwrap();
         let extension = get_code_extension(&language);
@@ -72,11 +84,14 @@ impl Submission {
             tmp_path,
             task_path,
             bin_path: PathBuf::new(),
-            message,
+            message_handler,
         }
     }
 
     pub fn compile(&mut self) {
+        if let Some(message) =  self.message_handler {
+            message(SubmissionMessage::Status(SubmissionStatus::Compiling));
+        }
         let compiler_path = get_base_path()
             .join("scripts")
             .join("compile_scripts")
@@ -100,22 +115,32 @@ impl Submission {
         });
 
         let compile_output = Command::new(compiler_path).args(args).output().unwrap();
-        let compile_output_args = String::from_utf8(compile_output.stdout)
+        let compile_output_args = String::from_utf8(compile_output.stdout.clone())
             .unwrap()
             .lines()
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
-        // let return_code: i32 = compile_output_args.get(0).unwrap().parse().unwrap();
+        let return_code: i32 = compile_output_args.get(0).unwrap().parse().unwrap();
 
         // if return_code != 0 {
         //     return Err(Error::from_raw_os_error(return_code));
         // }
 
         self.bin_path = PathBuf::from(compile_output_args.get(1).unwrap());
+
+        if let Some(message) =  self.message_handler {
+            match return_code {
+                0 => message(SubmissionMessage::Status(SubmissionStatus::Compiled)),
+                _ => message(SubmissionMessage::Status(SubmissionStatus::CompilationError(String::from_utf8(compile_output.stdout).unwrap())))
+            }
+        }
     }
 
     fn run_each(&self, checker: &Path, runner: &Path, index: u64) -> RunResult {
+        if let Some(message_handler) = self.message_handler {
+            message_handler(SubmissionMessage::Status(SubmissionStatus::Running(index)))
+        }
         let input_path = self
             .task_path
             .join("testcases")
@@ -173,6 +198,9 @@ impl Submission {
             run_result.message = get_message(&run_result.status);
         }
 
+        if let Some(message_handler) = self.message_handler {
+            message_handler(SubmissionMessage::RunResult(run_result.clone()))
+        }
         run_result
     }
 
@@ -240,17 +268,24 @@ impl Submission {
 
                 total_score += group_result.score;
             }
+            if let Some(message_handler) = self.message_handler {
+                message_handler(SubmissionMessage::GroupResult(group_result.clone()));
+            }
             group_results.push(group_result);
 
             last_test += tests;
         }
 
-        SubmissionResult {
+        let submission_result = SubmissionResult {
             score: total_score,
             full_score: total_full_score,
             submission_id: self.submission_id.to_owned(),
             group_result: group_results,
+        };
+        if let Some(message_handler) = self.message_handler {
+            message_handler(SubmissionMessage::Status(SubmissionStatus::Done(submission_result.clone())));
         }
+        submission_result
     }
 }
 

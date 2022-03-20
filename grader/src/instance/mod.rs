@@ -146,10 +146,6 @@ impl Instance {
 
     pub fn run(&self) -> InstanceResult {
         let args = self.get_run_arguments();
-        for i in args.iter() {
-            print!("{} ", i);
-        }
-        println!();
         Command::new(get_env("ISOLATE_PATH"))
             .args(args)
             .output()

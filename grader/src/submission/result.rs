@@ -1,4 +1,4 @@
-#[derive(Default, Debug, PartialEq)]
+#[derive(Default, Debug, PartialEq, Clone)]
 pub struct RunResult {
     pub submission_id: String,
     pub test_index: u64,
@@ -21,7 +21,7 @@ impl RunResult {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct GroupResult {
     pub score: f64,
     pub full_score: u64,
@@ -41,7 +41,7 @@ impl GroupResult {
     }
 }
 
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone)]
 pub struct SubmissionResult {
     pub score: f64,
     pub full_score: u64,
