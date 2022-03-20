@@ -4,6 +4,7 @@ use crate::s;
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
+use std::ops::Sub;
 use std::{fs, io::Write, path::Path, path::PathBuf, process::Command};
 
 pub mod manifest;
@@ -38,8 +39,18 @@ impl Default for SubmissionMessage {
         SubmissionMessage::Status(SubmissionStatus::Initialized)
     }
 }
-#[derive(Default, Debug)]
-pub struct Submission {
+pub trait DisplayFnT: FnMut(SubmissionMessage) {}
+
+impl<F> DisplayFnT for F where F: FnMut(SubmissionMessage) {}
+
+impl std::fmt::Debug for dyn DisplayFnT {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "DisplayFunction")
+    }
+}
+pub type DisplayFn<'a> = Box<dyn DisplayFnT + 'a>;
+#[derive(Default)]
+pub struct Submission<'a> {
     pub task_id: String,
     pub submission_id: String,
     pub language: String,
@@ -48,11 +59,33 @@ pub struct Submission {
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
     pub bin_path: PathBuf,
-    pub message_handler: Option<fn(SubmissionMessage)>,
+    pub message_handler: Option<DisplayFn<'a>>,
 }
 
-impl Submission {
-    pub fn from(task_id: String, submission_id: String, language: String, code: &[String], message_handler: Option<fn(SubmissionMessage)>) -> Self {
+impl<'a> std::fmt::Display for Submission<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Submission {} {} {} {:?} {:?} {:?} {:?} {:?}",
+            self.task_id,
+            self.submission_id,
+            self.language,
+            self.code_path,
+            self.task_manifest,
+            self.tmp_path,
+            self.task_path,
+            self.bin_path
+        )
+    }
+}
+impl<'a> Submission<'a> {
+    pub fn from(
+        task_id: String,
+        submission_id: String,
+        language: String,
+        code: &[String],
+        message_handler: Option<DisplayFn<'a>>,
+    ) -> Self {
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
         fs::create_dir(&tmp_path).unwrap();
         let extension = get_code_extension(&language);
@@ -89,8 +122,8 @@ impl Submission {
     }
 
     pub fn compile(&mut self) {
-        if let Some(message) =  self.message_handler {
-            message(SubmissionMessage::Status(SubmissionStatus::Compiling));
+        if let Some(message_handler) = &mut self.message_handler {
+            message_handler(SubmissionMessage::Status(SubmissionStatus::Compiling))
         }
         let compiler_path = get_base_path()
             .join("scripts")
@@ -129,16 +162,20 @@ impl Submission {
 
         self.bin_path = PathBuf::from(compile_output_args.get(1).unwrap());
 
-        if let Some(message) =  self.message_handler {
+        if let Some(message_handler) = &mut self.message_handler {
             match return_code {
-                0 => message(SubmissionMessage::Status(SubmissionStatus::Compiled)),
-                _ => message(SubmissionMessage::Status(SubmissionStatus::CompilationError(String::from_utf8(compile_output.stdout).unwrap())))
+                0 => message_handler(SubmissionMessage::Status(SubmissionStatus::Compiled)),
+                _ => message_handler(SubmissionMessage::Status(
+                    SubmissionStatus::CompilationError(
+                        String::from_utf8(compile_output.stdout).unwrap(),
+                    ),
+                )),
             }
         }
     }
 
-    fn run_each(&self, checker: &Path, runner: &Path, index: u64) -> RunResult {
-        if let Some(message_handler) = self.message_handler {
+    fn run_each(&mut self, checker: &Path, runner: &Path, index: u64) -> RunResult {
+        if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Running(index)))
         }
         let input_path = self
@@ -198,13 +235,13 @@ impl Submission {
             run_result.message = get_message(&run_result.status);
         }
 
-        if let Some(message_handler) = self.message_handler {
+        if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::RunResult(run_result.clone()))
         }
         run_result
     }
 
-    pub fn run(&self) -> SubmissionResult {
+    pub fn run(&mut self) -> SubmissionResult {
         // if !self.task_manifest.output_only {
         let checker =
             self.task_manifest
@@ -236,7 +273,9 @@ impl Submission {
         let mut total_full_score: u64 = 0;
         let mut group_results = Vec::new();
 
-        for (group_index, (full_score, tests)) in self.task_manifest.groups.iter().enumerate() {
+        for (group_index, (full_score, tests)) in
+            self.task_manifest.groups.clone().iter().enumerate()
+        {
             total_full_score += full_score;
 
             let mut skip = false;
@@ -251,6 +290,7 @@ impl Submission {
                 let run_result = if skip {
                     RunResult::from(self.submission_id.to_owned(), index, 0.0, 0)
                 } else {
+                    // self.run_each(&checker, &runner, index)
                     self.run_each(&checker, &runner, index)
                 };
                 args.push(run_result.score.to_string());
@@ -268,7 +308,7 @@ impl Submission {
 
                 total_score += group_result.score;
             }
-            if let Some(message_handler) = self.message_handler {
+            if let Some(message_handler) = &mut self.message_handler {
                 message_handler(SubmissionMessage::GroupResult(group_result.clone()));
             }
             group_results.push(group_result);
@@ -282,14 +322,16 @@ impl Submission {
             submission_id: self.submission_id.to_owned(),
             group_result: group_results,
         };
-        if let Some(message_handler) = self.message_handler {
-            message_handler(SubmissionMessage::Status(SubmissionStatus::Done(submission_result.clone())));
+        if let Some(message_handler) = &mut self.message_handler {
+            message_handler(SubmissionMessage::Status(SubmissionStatus::Done(
+                submission_result.clone(),
+            )));
         }
         submission_result
     }
 }
 
-impl Drop for Submission {
+impl<'a> Drop for Submission<'a> {
     fn drop(&mut self) {
         fs::remove_dir_all(&self.tmp_path).expect("Unable to remove submission folder.");
     }
