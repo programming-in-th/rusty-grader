@@ -108,7 +108,9 @@ impl Instance {
                 }
             }
         }
-        if memory_limit_exceeded || result.memory_usage >= self.memory_limit && result.status == Default::default() {
+        if memory_limit_exceeded
+            || result.memory_usage >= self.memory_limit && result.status == Default::default()
+        {
             result.status = RunVerdict::VerdictMLE;
         }
         result

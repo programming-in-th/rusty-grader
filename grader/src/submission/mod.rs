@@ -4,7 +4,6 @@ use crate::s;
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
-use std::ops::Sub;
 use std::{fs, io::Write, path::Path, path::PathBuf, process::Command};
 
 pub mod manifest;
@@ -290,7 +289,6 @@ impl<'a> Submission<'a> {
                 let run_result = if skip {
                     RunResult::from(self.submission_id.to_owned(), index, 0.0, 0)
                 } else {
-                    // self.run_each(&checker, &runner, index)
                     self.run_each(&checker, &runner, index)
                 };
                 args.push(run_result.score.to_string());

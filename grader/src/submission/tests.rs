@@ -541,5 +541,4 @@ fn should_handle_messaging() {
         let _result = submission.run();
         assert_eq!(_result.score, 100.0);
     }
-    println!("{:?}", v);
 }
