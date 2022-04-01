@@ -5,7 +5,7 @@ use crate::utils::tests::{compile_cpp, get_example_dir, get_tmp_path, TempDir};
 use dotenv::dotenv;
 
 #[test]
-fn should_complete_initialize_instance() {
+fn should_complete_initialize_instance() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -22,12 +22,12 @@ fn should_complete_initialize_instance() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init();
+    instance.init()?;
+    Ok(())
 }
 
 #[test]
-#[should_panic]
-fn should_error_if_input_path_is_wrong() {
+fn should_error_if_input_path_is_wrong() -> Result<(), Box<dyn Error>> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -43,7 +43,8 @@ fn should_error_if_input_path_is_wrong() {
         runner_path: base_dir.join("run_cpp")
     };
 
-    let _init_result = instance.init();
+    let _init_result = instance.init()?;
+    Ok(())
 }
 
 #[test]

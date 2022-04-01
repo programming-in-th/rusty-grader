@@ -1,9 +1,9 @@
 use crate::combine_argument;
 use crate::utils::get_env;
-use std::{fs, fmt, path::PathBuf, process::Command, error::Error};
+use std::{error::Error, fmt, fs, path::PathBuf, process::Command};
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 /// Instance define a single test case to run in isolated environment
 #[derive(Default, Debug)]
@@ -95,7 +95,7 @@ impl Instance {
         ])
     }
 
-    pub fn get_result(&self) -> Result<InstanceResult , Box<dyn Error>> {
+    pub fn get_result(&self) -> Result<InstanceResult, Box<dyn Error>> {
         let log_content = fs::read_to_string(&self.log_file)?;
         let mut result: InstanceResult = Default::default();
         let mut memory_limit_exceeded = false;
@@ -149,7 +149,9 @@ impl Instance {
 
         fs::copy(
             &self.bin_path,
-            &self.box_path.join(self.bin_path.file_name().ok_or(GetStrError)?),
+            &self
+                .box_path
+                .join(self.bin_path.file_name().ok_or(GetStrError)?),
         )?;
 
         fs::copy(&self.runner_path, &self.box_path.join("runner"))?;
@@ -158,9 +160,7 @@ impl Instance {
 
     pub fn run(&self) -> Result<InstanceResult, Box<dyn Error>> {
         let args = self.get_run_arguments()?;
-        Command::new(get_env("ISOLATE_PATH"))
-            .args(args)
-            .output()?;
+        Command::new(get_env("ISOLATE_PATH")).args(args).output()?;
 
         let result = self.get_result()?;
         if result.status == RunVerdict::VerdictOK {

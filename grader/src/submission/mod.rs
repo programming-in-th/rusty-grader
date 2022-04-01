@@ -4,13 +4,13 @@ use crate::s;
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
-use std::{fs, io::Write, path::Path, path::PathBuf, process::Command, error::Error, fmt};
+use std::{error::Error, fmt, fs, io::Write, path::Path, path::PathBuf, process::Command};
 
 pub mod manifest;
 pub mod result;
 
-#[cfg(test)]
-mod tests;
+// #[cfg(test)]
+// mod tests;
 
 #[derive(Debug)]
 pub enum SubmissionStatus {
@@ -133,7 +133,8 @@ impl<'a> Submission<'a> {
                     file.write_all(val.as_bytes())?;
 
                     Ok(code_path)
-                }).collect::<Result<Vec<_>, _>>()?,
+                })
+                .collect::<Result<Vec<_>, _>>()?,
             task_manifest: Manifest::from(task_path.join("manifest.yaml")),
             tmp_path,
             task_path,
@@ -159,7 +160,10 @@ impl<'a> Submission<'a> {
         let mut tmp_compile_files = vec![];
 
         if let Some(compile_files) = &self.task_manifest.compile_files {
-            for compile_file in compile_files.get(&self.language).ok_or(GetIndexError("language"))? {
+            for compile_file in compile_files
+                .get(&self.language)
+                .ok_or(GetIndexError("language"))?
+            {
                 tmp_compile_files.push(self.tmp_path.join(&compile_file));
             }
         }
@@ -174,28 +178,38 @@ impl<'a> Submission<'a> {
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
-        let return_code: i32 = compile_output_args.get(0).ok_or(GetIndexError("get compilation output argument"))?.parse()?;
+        let return_code: i32 = compile_output_args
+            .get(0)
+            .ok_or(GetIndexError("get compilation output argument"))?
+            .parse()?;
 
         // if return_code != 0 {
         //     return Err(Error::from_raw_os_error(return_code));
         // }
 
-        self.bin_path = PathBuf::from(compile_output_args.get(1).ok_or(GetIndexError("get binary path"))?);
+        self.bin_path = PathBuf::from(
+            compile_output_args
+                .get(1)
+                .ok_or(GetIndexError("get binary path"))?,
+        );
 
         if let Some(message_handler) = &mut self.message_handler {
             match return_code {
                 0 => message_handler(SubmissionMessage::Status(SubmissionStatus::Compiled)),
                 _ => message_handler(SubmissionMessage::Status(
-                    SubmissionStatus::CompilationError(
-                        String::from_utf8(compile_output.stdout)?,
-                    ),
+                    SubmissionStatus::CompilationError(String::from_utf8(compile_output.stdout)?),
                 )),
             }
         }
         Ok(())
     }
 
-    fn run_each(&mut self, checker: &Path, runner: &Path, index: u64) -> Result<RunResult, Box<dyn Error>> {
+    fn run_each(
+        &mut self,
+        checker: &Path,
+        runner: &Path,
+        index: u64,
+    ) -> Result<RunResult, Box<dyn Error>> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Running(index)))
         }
@@ -238,11 +252,18 @@ impl<'a> Submission<'a> {
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
 
-                run_result.score = checker_output.get(1).ok_or(GetIndexError("score"))?.parse()?;
+                run_result.score = checker_output
+                    .get(1)
+                    .ok_or(GetIndexError("score"))?
+                    .parse()?;
                 run_result.message = checker_output
                     .get(2)
                     .map_or(String::new(), |v| v.to_owned());
-                checker_output.get(0).ok_or(GetIndexError("checker output"))?.as_str().to_owned()
+                checker_output
+                    .get(0)
+                    .ok_or(GetIndexError("checker output"))?
+                    .as_str()
+                    .to_owned()
             }
             RunVerdict::VerdictTLE => s!("Time Limit Exceeded"),
             RunVerdict::VerdictMLE => s!("Memory Limit Exceeded"),
