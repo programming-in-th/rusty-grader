@@ -1,5 +1,6 @@
 use crate::utils::load_yaml;
 use std::{collections::BTreeMap, path::PathBuf};
+use crate::errors::{GraderError, GraderResult};
 
 #[derive(Default, Debug)]
 pub struct Manifest {
@@ -15,43 +16,43 @@ pub struct Manifest {
 }
 
 impl Manifest {
-    pub fn from(path: PathBuf) -> Self {
+    pub fn from(path: PathBuf) -> GraderResult<Self> {
         let yaml = load_yaml(path);
-        Manifest {
-            task_id: yaml["task_id"].as_str().unwrap().to_owned(),
+        Ok(Manifest {
+            task_id: yaml["task_id"].as_str().ok_or(GraderError::invalid_value())?.to_owned(),
             output_only: yaml["output_only"].as_bool().unwrap_or(false),
             time_limit: yaml["time_limit"].as_f64(),
             memory_limit: yaml["memory_limit"].as_i64().map(|limit| limit as u64),
             limit: yaml["limit"].as_hash().map(|limits| {
-                limits
+                Ok(limits
                     .iter()
                     .map(|(language, limit)| {
-                        (
-                            language.as_str().unwrap().to_owned(),
+                        Ok((
+                            language.as_str().ok_or(GraderError::invalid_value())?.to_owned(),
                             (
-                                limit["time_limit"].as_f64().unwrap(),
-                                limit["memory_limit"].as_i64().unwrap() as u64,
+                                limit["time_limit"].as_f64().ok_or(GraderError::invalid_value())?,
+                                limit["memory_limit"].as_i64().ok_or(GraderError::invalid_value())? as u64,
                             ),
-                        )
+                        ))
                     })
-                    .collect()
-            }),
+                    .collect::<GraderResult<BTreeMap<_, _>>>()?)
+            }).transpose()?,
             compile_files: yaml["compile_files"].as_hash().map(|compile_files| {
                 compile_files
                     .iter()
                     .map(|(language, files)| {
-                        (
-                            language.as_str().unwrap().to_owned(),
+                        Ok((
+                            language.as_str().ok_or(GraderError::invalid_value())?.to_owned(),
                             files
                                 .as_vec()
-                                .unwrap()
+                                .ok_or(GraderError::invalid_value())?
                                 .iter()
-                                .map(|file| file.as_str().unwrap().to_owned())
-                                .collect(),
-                        )
+                                .map(|file| Ok(file.as_str().ok_or(GraderError::invalid_value())?.to_owned()))
+                                .collect()?,
+                        ))
                     })
                     .collect()
-            }),
+            }).transpose()?,
             checker: yaml["checker"].as_str().map(|checker| checker.to_owned()),
             grouper: yaml["grouper"].as_str().map(|grouper| grouper.to_owned()),
             groups: yaml["groups"]
@@ -60,14 +61,14 @@ impl Manifest {
                     groups
                         .iter()
                         .map(|group| {
-                            (
-                                group["full_score"].as_i64().unwrap() as u64,
-                                group["tests"].as_i64().unwrap() as u64,
-                            )
+                            Ok((
+                                group["full_score"].as_i64().ok_or(GraderError::invalid_value())? as u64,
+                                group["tests"].as_i64().ok_or(GraderError::invalid_value())? as u64,
+                            ))
                         })
                         .collect()
                 })
-                .unwrap(),
-        }
+                .ok_or(GraderError::invalid_value())?,
+        })
     }
 }

@@ -10,8 +10,8 @@ use crate::errors::{GraderError, GraderResult};
 pub mod manifest;
 pub mod result;
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 #[derive(Debug)]
 pub enum SubmissionStatus {
@@ -114,7 +114,7 @@ impl<'a> Submission<'a> {
                     Ok(code_path)
                 })
                 .collect::<GraderResult<Vec<_>>>()?,
-            task_manifest: Manifest::from(task_path.join("manifest.yaml")),
+            task_manifest: Manifest::from(task_path.join("manifest.yaml"))?,
             tmp_path,
             task_path,
             bin_path: PathBuf::new(),

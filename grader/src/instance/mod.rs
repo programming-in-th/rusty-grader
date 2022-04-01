@@ -3,8 +3,8 @@ use crate::utils::get_env;
 use std::{fs, path::PathBuf, process::Command};
 use crate::errors::{GraderError, GraderResult};
 
-// #[cfg(test)]
-// mod tests;
+#[cfg(test)]
+mod tests;
 
 /// Instance define a single test case to run in isolated environment
 #[derive(Default, Debug)]
