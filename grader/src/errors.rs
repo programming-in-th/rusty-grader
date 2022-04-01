@@ -1,6 +1,5 @@
 #[cfg(feature = "backtraces")]
 use std::backtrace::Backtrace;
-// use std::fmt;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -23,7 +22,23 @@ pub enum GraderError {
         msg: String,
         #[cfg(feature = "backtraces")]
         backtrace: Backtrace,
+    },
+    #[error("Error indexing into array")]
+    InvalidIndex {
+        #[cfg(feature = "backtraces")]
+        backtrace: Backtrace,
+    },
+    #[error("Error unwrapping None option")]
+    InvalidValue {
+        #[cfg(feature = "backtraces")]
+        backtrace: Backtrace,
+    },
+    #[error("Error transforming from PathBuf to String")]
+    InvalidToStr {
+        #[cfg(feature = "backtraces")]
+        backtrace: Backtrace,
     }
+
 }
 impl GraderError {
     pub fn invalid_utf8(msg: impl ToString) -> Self {
@@ -46,6 +61,27 @@ impl GraderError {
     pub fn invalid_io(msg: impl ToString) -> Self {
         GraderError::InvalidIo {
             msg: msg.to_string(),
+            #[cfg(feature = "backtraces")]
+            backtrace: Backtrace::capture(),
+        }
+    }
+
+    pub fn invalid_index() -> Self {
+        GraderError::InvalidIndex {
+            #[cfg(feature = "backtraces")]
+            backtrace: Backtrace::capture(),
+        }
+    }
+
+    pub fn invalid_value() -> Self {
+        GraderError::InvalidValue {
+            #[cfg(feature = "backtraces")]
+            backtrace: Backtrace::capture(),
+        }
+    }
+
+    pub fn invalid_to_str() -> Self {
+        GraderError::InvalidToStr {
             #[cfg(feature = "backtraces")]
             backtrace: Backtrace::capture(),
         }

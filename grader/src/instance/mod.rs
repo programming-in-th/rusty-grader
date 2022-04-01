@@ -1,6 +1,7 @@
 use crate::combine_argument;
 use crate::utils::get_env;
-use std::{error::Error, fmt, fs, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf, process::Command};
+use crate::errors::{GraderError, GraderResult};
 
 // #[cfg(test)]
 // mod tests;
@@ -19,19 +20,6 @@ pub struct Instance {
     pub runner_path: PathBuf,
 }
 
-impl Drop for Instance {
-    fn drop(&mut self) {
-        Command::new(get_env("ISOLATE_PATH"))
-            .args(&["--cleanup", "--cg", "-b"])
-            .arg(self.box_id.to_string())
-            .output()
-            .expect("Unable to cleanup isolate --cleanup command.");
-
-        if self.log_file.is_file() {
-            fs::remove_file(&self.log_file).expect("Unable to remove log file.");
-        }
-    }
-}
 
 #[derive(Debug, PartialEq)]
 pub enum RunVerdict {
@@ -56,24 +44,13 @@ pub struct InstanceResult {
     pub memory_usage: u64,
 }
 
-#[derive(Debug)]
-struct GetStrError;
-
-impl fmt::Display for GetStrError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Unable to convert to string")
-    }
-}
-
-impl Error for GetStrError {}
-
 impl Instance {
-    fn get_run_arguments(&self) -> Result<Vec<String>, Box<dyn Error>> {
+    fn get_run_arguments(&self) -> GraderResult<Vec<String>> {
         Ok(combine_argument![
             "-b",
             self.box_id.to_string(),
             "-M",
-            self.log_file.to_str().ok_or(GetStrError)?.to_string(),
+            self.log_file.to_str().ok_or(GraderError::invalid_to_str())?.to_string(),
             "-t",
             self.time_limit.to_string(),
             "-w",
@@ -95,7 +72,7 @@ impl Instance {
         ])
     }
 
-    pub fn get_result(&self) -> Result<InstanceResult, Box<dyn Error>> {
+    pub fn get_result(&self) -> GraderResult<InstanceResult> {
         let log_content = fs::read_to_string(&self.log_file)?;
         let mut result: InstanceResult = Default::default();
         let mut memory_limit_exceeded = false;
@@ -127,7 +104,7 @@ impl Instance {
         Ok(result)
     }
 
-    pub fn init(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn init(&mut self) -> GraderResult<()> {
         for tmp_box_idx in 1..=1000 {
             let box_path = Command::new(get_env("ISOLATE_PATH"))
                 .args(&["--init", "--cg", "-b"])
@@ -151,14 +128,14 @@ impl Instance {
             &self.bin_path,
             &self
                 .box_path
-                .join(self.bin_path.file_name().ok_or(GetStrError)?),
+                .join(self.bin_path.file_name().ok_or(GraderError::invalid_to_str())?),
         )?;
 
         fs::copy(&self.runner_path, &self.box_path.join("runner"))?;
         Ok(())
     }
 
-    pub fn run(&self) -> Result<InstanceResult, Box<dyn Error>> {
+    pub fn run(&self) -> GraderResult<InstanceResult> {
         let args = self.get_run_arguments()?;
         Command::new(get_env("ISOLATE_PATH")).args(args).output()?;
 
@@ -167,5 +144,19 @@ impl Instance {
             fs::copy(&self.box_path.join("output"), &self.output_path)?;
         }
         Ok(result)
+    }
+}
+
+impl Drop for Instance {
+    fn drop(&mut self) {
+        Command::new(get_env("ISOLATE_PATH"))
+            .args(&["--cleanup", "--cg", "-b"])
+            .arg(self.box_id.to_string())
+            .output()
+            .expect("Unable to cleanup isolate --cleanup command.");
+
+        if self.log_file.is_file() {
+            fs::remove_file(&self.log_file).expect("Unable to remove log file.");
+        }
     }
 }

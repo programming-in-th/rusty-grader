@@ -4,7 +4,8 @@ use crate::s;
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
-use std::{error::Error, fmt, fs, io::Write, path::Path, path::PathBuf, process::Command};
+use std::{fs, io::Write, path::Path, path::PathBuf, process::Command};
+use crate::errors::{GraderError, GraderResult};
 
 pub mod manifest;
 pub mod result;
@@ -78,28 +79,6 @@ impl<'a> std::fmt::Display for Submission<'a> {
     }
 }
 
-#[derive(Debug)]
-struct GetIndexError(&'static str);
-
-impl fmt::Display for GetIndexError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Unable to get index from {}", self.0)
-    }
-}
-
-impl Error for GetIndexError {}
-
-#[derive(Debug)]
-struct GetValueError(&'static str);
-
-impl fmt::Display for GetValueError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Unable to get value from {}", self.0)
-    }
-}
-
-impl Error for GetValueError {}
-
 impl<'a> Submission<'a> {
     pub fn from(
         task_id: String,
@@ -107,7 +86,7 @@ impl<'a> Submission<'a> {
         language: String,
         code: &[String],
         message_handler: Option<DisplayFn<'a>>,
-    ) -> Result<Self, Box<dyn Error>> {
+    ) -> GraderResult<Self> {
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
         fs::create_dir(&tmp_path)?;
         let extension = get_code_extension(&language);
@@ -126,7 +105,7 @@ impl<'a> Submission<'a> {
             code_path: code
                 .iter()
                 .enumerate()
-                .map(|(idx, val)| -> Result<PathBuf, Box<dyn Error>> {
+                .map(|(idx, val)| {
                     let code_path =
                         tmp_path.join(format!("code_{}.{}", &idx.to_string(), &extension));
                     let mut file = fs::File::create(&code_path)?;
@@ -134,7 +113,7 @@ impl<'a> Submission<'a> {
 
                     Ok(code_path)
                 })
-                .collect::<Result<Vec<_>, _>>()?,
+                .collect::<GraderResult<Vec<_>>>()?,
             task_manifest: Manifest::from(task_path.join("manifest.yaml")),
             tmp_path,
             task_path,
@@ -143,7 +122,7 @@ impl<'a> Submission<'a> {
         })
     }
 
-    pub fn compile(&mut self) -> Result<(), Box<dyn Error>> {
+    pub fn compile(&mut self) -> GraderResult<()> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Compiling))
         }
@@ -162,7 +141,7 @@ impl<'a> Submission<'a> {
         if let Some(compile_files) = &self.task_manifest.compile_files {
             for compile_file in compile_files
                 .get(&self.language)
-                .ok_or(GetIndexError("language"))?
+                .ok_or(GraderError::invalid_index())?
             {
                 tmp_compile_files.push(self.tmp_path.join(&compile_file));
             }
@@ -180,7 +159,7 @@ impl<'a> Submission<'a> {
 
         let return_code: i32 = compile_output_args
             .get(0)
-            .ok_or(GetIndexError("get compilation output argument"))?
+            .ok_or(GraderError::invalid_index())?
             .parse()?;
 
         // if return_code != 0 {
@@ -190,7 +169,7 @@ impl<'a> Submission<'a> {
         self.bin_path = PathBuf::from(
             compile_output_args
                 .get(1)
-                .ok_or(GetIndexError("get binary path"))?,
+                .ok_or(GraderError::invalid_index())?,
         );
 
         if let Some(message_handler) = &mut self.message_handler {
@@ -209,7 +188,7 @@ impl<'a> Submission<'a> {
         checker: &Path,
         runner: &Path,
         index: u64,
-    ) -> Result<RunResult, Box<dyn Error>> {
+    ) -> GraderResult<RunResult> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Running(index)))
         }
@@ -224,8 +203,8 @@ impl<'a> Submission<'a> {
             .join(format!("{}.sol", index));
 
         let mut instance = instance! {
-            time_limit: self.task_manifest.time_limit.ok_or(GetValueError("time limit"))?,
-            memory_limit: self.task_manifest.memory_limit.ok_or(GetValueError("memory limit"))? * 1000,
+            time_limit: self.task_manifest.time_limit.ok_or(GraderError::invalid_value())?,
+            memory_limit: self.task_manifest.memory_limit.ok_or(GraderError::invalid_value())? * 1000,
             bin_path: self.bin_path.clone(),
             input_path: input_path.clone(),
             output_path: output_path.clone(),
@@ -254,14 +233,14 @@ impl<'a> Submission<'a> {
 
                 run_result.score = checker_output
                     .get(1)
-                    .ok_or(GetIndexError("score"))?
+                    .ok_or(GraderError::invalid_index())?
                     .parse()?;
                 run_result.message = checker_output
                     .get(2)
                     .map_or(String::new(), |v| v.to_owned());
                 checker_output
                     .get(0)
-                    .ok_or(GetIndexError("checker output"))?
+                    .ok_or(GraderError::invalid_index())?
                     .as_str()
                     .to_owned()
             }
@@ -282,7 +261,7 @@ impl<'a> Submission<'a> {
         Ok(run_result)
     }
 
-    pub fn run(&mut self) -> Result<SubmissionResult, Box<dyn Error>> {
+    pub fn run(&mut self) -> GraderResult<SubmissionResult> {
         // if !self.task_manifest.output_only {
         let checker =
             self.task_manifest
