@@ -1,5 +1,6 @@
 use super::*;
 
+use crate::errors::GraderResult;
 use crate::s;
 use crate::utils::tests::get_example_dir;
 use dotenv::dotenv;
@@ -21,18 +22,20 @@ fn should_complete_initialize_submission() {
 }
 
 #[test]
-fn should_compile_cpp_successfully() {
+fn should_compile_cpp_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000001"), s!("cpp"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000001"), s!("cpp"), &vec![code], None)?;
+    submission.compile()?;
+
+    Ok(())
 }
 
 #[test]
-fn should_compile_python_successfully() {
+fn should_compile_python_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py")).unwrap();
@@ -43,23 +46,27 @@ fn should_compile_python_successfully() {
         s!("python"),
         &vec![code],
         None,
-    );
-    submission.compile();
+    )?;
+    submission.compile()?;
+
+    Ok(())
 }
 
 #[test]
-fn should_compile_rust_successfully() {
+fn should_compile_rust_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.rs")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000003"), s!("rust"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000003"), s!("rust"), &vec![code], None)?;
+    submission.compile()?;
+
+    Ok(())
 }
 
 #[test]
-fn should_remove_tmp_dir_after_out_of_scope() {
+fn should_remove_tmp_dir_after_out_of_scope() -> GraderResult<()> {
     dotenv().ok();
 
     let tmp_path;
@@ -67,39 +74,43 @@ fn should_remove_tmp_dir_after_out_of_scope() {
         let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
         let mut submission =
-            Submission::from(s!("a_plus_b"), s!("000004"), s!("cpp"), &vec![code], None);
-        submission.compile();
+            Submission::from(s!("a_plus_b"), s!("000004"), s!("cpp"), &vec![code], None)?;
+        submission.compile()?;
         tmp_path = submission.tmp_path.clone();
     }
 
     assert!(!tmp_path.exists());
+
+    Ok(())
 }
 
 #[test]
-fn should_run_cpp_successfully() {
+fn should_run_cpp_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000005"), s!("cpp"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000005"), s!("cpp"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
     assert_eq!(_result.score, 100.0);
+
+    Ok(())
 }
 
 #[test]
-fn should_run_cpp_tle_skipped() {
+fn should_run_cpp_tle_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_TLE.cpp")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000006"), s!("cpp"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000006"), s!("cpp"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -116,19 +127,21 @@ fn should_run_cpp_tle_skipped() {
         s!("Time Limit Exceeded")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_cpp_mle_skipped() {
+fn should_run_cpp_mle_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_MLE.cpp")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000007"), s!("cpp"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000007"), s!("cpp"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -145,19 +158,21 @@ fn should_run_cpp_mle_skipped() {
         s!("Memory Limit Exceeded")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_cpp_re_skipped() {
+fn should_run_cpp_re_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_RE.cpp")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000008"), s!("cpp"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000008"), s!("cpp"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -174,19 +189,21 @@ fn should_run_cpp_re_skipped() {
         s!("Runtime Error")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_cpp_sg_skipped() {
+fn should_run_cpp_sg_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_SG.cpp")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000009"), s!("cpp"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000009"), s!("cpp"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -203,24 +220,28 @@ fn should_run_cpp_sg_skipped() {
         s!("Signal Error")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_cpp_with_header_successfully() {
+fn should_run_cpp_with_header_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_h.cpp")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b_h"), s!("000010"), s!("cpp"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b_h"), s!("000010"), s!("cpp"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
     assert_eq!(_result.score, 100.0);
+
+    Ok(())
 }
 
 #[test]
-fn should_run_python_successfully() {
+fn should_run_python_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.py")).unwrap();
@@ -231,15 +252,17 @@ fn should_run_python_successfully() {
         s!("python"),
         &vec![code],
         None,
-    );
-    submission.compile();
+    )?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
     assert_eq!(_result.score, 100.0);
+
+    Ok(())
 }
 
 #[test]
-fn should_run_python_tle_skipped() {
+fn should_run_python_tle_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_TLE.py")).unwrap();
@@ -250,10 +273,10 @@ fn should_run_python_tle_skipped() {
         s!("python"),
         &vec![code],
         None,
-    );
-    submission.compile();
+    )?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -270,10 +293,12 @@ fn should_run_python_tle_skipped() {
         s!("Time Limit Exceeded")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_python_mle_skipped() {
+fn should_run_python_mle_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_MLE.py")).unwrap();
@@ -284,10 +309,10 @@ fn should_run_python_mle_skipped() {
         s!("python"),
         &vec![code],
         None,
-    );
-    submission.compile();
+    )?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -304,10 +329,12 @@ fn should_run_python_mle_skipped() {
         s!("Memory Limit Exceeded")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_python_re_skipped() {
+fn should_run_python_re_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_RE.py")).unwrap();
@@ -318,10 +345,10 @@ fn should_run_python_re_skipped() {
         s!("python"),
         &vec![code],
         None,
-    );
-    submission.compile();
+    )?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -338,33 +365,37 @@ fn should_run_python_re_skipped() {
         s!("Runtime Error")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_rust_successfully() {
+fn should_run_rust_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.rs")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000015"), s!("rust"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000015"), s!("rust"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
     assert_eq!(_result.score, 100.0);
+
+    Ok(())
 }
 
 #[test]
-fn should_run_rust_tle_skipped() {
+fn should_run_rust_tle_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_TLE.rs")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000016"), s!("rust"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000016"), s!("rust"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -381,19 +412,21 @@ fn should_run_rust_tle_skipped() {
         s!("Time Limit Exceeded")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_rust_mle_skipped() {
+fn should_run_rust_mle_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_MLE.rs")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000017"), s!("rust"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000017"), s!("rust"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -410,19 +443,21 @@ fn should_run_rust_mle_skipped() {
         s!("Memory Limit Exceeded")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_rust_re_skipped() {
+fn should_run_rust_re_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_RE.rs")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000018"), s!("rust"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000018"), s!("rust"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -439,19 +474,21 @@ fn should_run_rust_re_skipped() {
         s!("Runtime Error")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_run_rust_sg_skipped() {
+fn should_run_rust_sg_skipped() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b_SG.rs")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000019"), s!("rust"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000019"), s!("rust"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
 
     assert_eq!(_result.score, 0.0);
 
@@ -468,60 +505,70 @@ fn should_run_rust_sg_skipped() {
         s!("Signal Error")
     );
     assert_eq!(_result.group_result[1].run_result[1].status, s!(""));
+
+    Ok(())
 }
 
 #[test]
-fn should_compile_go_successfully() {
+fn should_compile_go_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.go")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000020"), s!("go"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000020"), s!("go"), &vec![code], None)?;
+    submission.compile()?;
+
+    Ok(())
 }
 
 #[test]
-fn should_run_go_successfully() {
+fn should_run_go_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.go")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000021"), s!("go"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000021"), s!("go"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
     assert_eq!(_result.score, 100.0);
+
+    Ok(())
 }
 
 #[test]
-fn should_compile_java_successfully() {
+fn should_compile_java_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.java")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000022"), s!("java"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000022"), s!("java"), &vec![code], None)?;
+    submission.compile()?;
+
+    Ok(())
 }
 
 #[test]
-fn should_run_java_successfully() {
+fn should_run_java_successfully() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.java")).unwrap();
 
     let mut submission =
-        Submission::from(s!("a_plus_b"), s!("000023"), s!("java"), &vec![code], None);
-    submission.compile();
+        Submission::from(s!("a_plus_b"), s!("000023"), s!("java"), &vec![code], None)?;
+    submission.compile()?;
 
-    let _result = submission.run();
+    let _result = submission.run()?;
     assert_eq!(_result.score, 100.0);
+
+    Ok(())
 }
 
 #[test]
-fn should_handle_messaging() {
+fn should_handle_messaging() -> GraderResult<()> {
     dotenv().ok();
 
     let code = fs::read_to_string(get_example_dir().join("etc").join("a_plus_b.cpp")).unwrap();
@@ -535,10 +582,12 @@ fn should_handle_messaging() {
             Some(Box::new(|msg| {
                 v.push(msg);
             })),
-        );
-        submission.compile();
+        )?;
+        submission.compile()?;
 
-        let _result = submission.run();
+        let _result = submission.run()?;
         assert_eq!(_result.score, 100.0);
     }
+
+    Ok(())
 }

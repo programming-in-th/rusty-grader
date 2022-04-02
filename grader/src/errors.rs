@@ -2,7 +2,7 @@
 use std::backtrace::Backtrace;
 use thiserror::Error;
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq)]
 pub enum GraderError {
     #[error("Cannot decode UTF8 bytes into string: {msg}")]
     InvalidUtf8 {
