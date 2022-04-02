@@ -1,4 +1,5 @@
 use crate::combine_argument;
+use crate::errors::{GraderError, GraderResult};
 use crate::utils::get_env;
 use std::{fs, path::PathBuf, process::Command};
 
@@ -17,20 +18,6 @@ pub struct Instance {
     pub input_path: PathBuf,
     pub output_path: PathBuf,
     pub runner_path: PathBuf,
-}
-
-impl Drop for Instance {
-    fn drop(&mut self) {
-        Command::new(get_env("ISOLATE_PATH"))
-            .args(&["--cleanup", "--cg", "-b"])
-            .arg(self.box_id.to_string())
-            .output()
-            .expect("Unable to cleanup isolate --cleanup command.");
-
-        if self.log_file.is_file() {
-            fs::remove_file(&self.log_file).expect("Unable to remove log file.");
-        }
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -57,12 +44,15 @@ pub struct InstanceResult {
 }
 
 impl Instance {
-    fn get_run_arguments(&self) -> Vec<String> {
-        combine_argument![
+    fn get_run_arguments(&self) -> GraderResult<Vec<String>> {
+        Ok(combine_argument![
             "-b",
             self.box_id.to_string(),
             "-M",
-            self.log_file.to_str().unwrap().to_string(),
+            self.log_file
+                .to_str()
+                .ok_or(GraderError::invalid_to_str())?
+                .to_string(),
             "-t",
             self.time_limit.to_string(),
             "-w",
@@ -81,11 +71,11 @@ impl Instance {
             "--run",
             "--",
             "runner"
-        ]
+        ])
     }
 
-    pub fn get_result(&self) -> InstanceResult {
-        let log_content = fs::read_to_string(&self.log_file).unwrap();
+    pub fn get_result(&self) -> GraderResult<InstanceResult> {
+        let log_content = fs::read_to_string(&self.log_file)?;
         let mut result: InstanceResult = Default::default();
         let mut memory_limit_exceeded = false;
         for log_line in log_content.lines() {
@@ -101,8 +91,8 @@ impl Instance {
                             _ => RunVerdict::VerdictSG,
                         }
                     }
-                    "time" => result.time_usage = args[1].parse().unwrap(),
-                    "cg-mem" => result.memory_usage = args[1].parse().unwrap(),
+                    "time" => result.time_usage = args[1].parse()?,
+                    "cg-mem" => result.memory_usage = args[1].parse()?,
                     "cg-oom-killed" => memory_limit_exceeded = args[1].trim() == "1",
                     _ => (),
                 }
@@ -113,19 +103,18 @@ impl Instance {
         {
             result.status = RunVerdict::VerdictMLE;
         }
-        result
+        Ok(result)
     }
 
-    pub fn init(&mut self) {
+    pub fn init(&mut self) -> GraderResult<()> {
         for tmp_box_idx in 1..=1000 {
             let box_path = Command::new(get_env("ISOLATE_PATH"))
                 .args(&["--init", "--cg", "-b"])
                 .arg(tmp_box_idx.to_string())
-                .output()
-                .unwrap();
+                .output()?;
 
             if box_path.status.success() {
-                let box_path = String::from_utf8(box_path.stdout).unwrap();
+                let box_path = String::from_utf8(box_path.stdout)?;
                 self.box_path = PathBuf::from(box_path.trim_end_matches('\n')).join("box");
                 self.box_id = tmp_box_idx;
                 break;
@@ -135,28 +124,42 @@ impl Instance {
         let tmp_path = get_env("TEMPORARY_PATH");
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
-        fs::copy(&self.input_path, &self.box_path.join("input")).unwrap();
+        fs::copy(&self.input_path, &self.box_path.join("input"))?;
 
         fs::copy(
             &self.bin_path,
-            &self.box_path.join(self.bin_path.file_name().unwrap()),
-        )
-        .unwrap();
+            &self.box_path.join(
+                self.bin_path
+                    .file_name()
+                    .ok_or(GraderError::invalid_to_str())?,
+            ),
+        )?;
 
-        fs::copy(&self.runner_path, &self.box_path.join("runner")).unwrap();
+        fs::copy(&self.runner_path, &self.box_path.join("runner"))?;
+        Ok(())
     }
 
-    pub fn run(&self) -> InstanceResult {
-        let args = self.get_run_arguments();
-        Command::new(get_env("ISOLATE_PATH"))
-            .args(args)
-            .output()
-            .unwrap();
+    pub fn run(&self) -> GraderResult<InstanceResult> {
+        let args = self.get_run_arguments()?;
+        Command::new(get_env("ISOLATE_PATH")).args(args).output()?;
 
-        let result = self.get_result();
+        let result = self.get_result()?;
         if result.status == RunVerdict::VerdictOK {
-            fs::copy(&self.box_path.join("output"), &self.output_path).unwrap();
+            fs::copy(&self.box_path.join("output"), &self.output_path)?;
         }
-        result
+        Ok(result)
+    }
+}
+
+impl Drop for Instance {
+    fn drop(&mut self) {
+        Command::new(get_env("ISOLATE_PATH"))
+            .args(&["--cleanup", "--cg", "-b"])
+            .arg(self.box_id.to_string())
+            .output();
+
+        if self.log_file.is_file() {
+            fs::remove_file(&self.log_file);
+        }
     }
 }

@@ -8,3 +8,4 @@ edition = "2018"
 [dependencies]
 dotenv = "0.15"
 yaml-rust = "0.4"
+thiserror = "1.0"

@@ -1,11 +1,12 @@
 use super::*;
+use crate::errors::{GraderError, GraderResult};
 use crate::instance;
 use crate::utils::tests::{compile_cpp, get_example_dir, get_tmp_path, TempDir};
 
 use dotenv::dotenv;
 
 #[test]
-fn should_complete_initialize_instance() {
+fn should_complete_initialize_instance() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -22,12 +23,12 @@ fn should_complete_initialize_instance() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init();
+    instance.init()?;
+    Ok(())
 }
 
 #[test]
-#[should_panic]
-fn should_error_if_input_path_is_wrong() {
+fn should_error_if_input_path_is_wrong() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -44,11 +45,18 @@ fn should_error_if_input_path_is_wrong() {
     };
 
     let _init_result = instance.init();
+    assert_eq!(
+        _init_result,
+        Err(GraderError::InvalidIo {
+            msg: String::from("No such file or directory (os error 2)")
+        })
+    );
+
+    Ok(())
 }
 
 #[test]
-#[should_panic]
-fn should_error_if_output_path_is_wrong() {
+fn should_error_if_output_path_is_wrong() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -65,13 +73,20 @@ fn should_error_if_output_path_is_wrong() {
     };
 
     let _init_result = instance.init();
+    assert_eq!(
+        _init_result,
+        Err(GraderError::InvalidIo {
+            msg: String::from("No such file or directory (os error 2)")
+        })
+    );
+
+    Ok(())
 }
 
 #[test]
-#[should_panic]
-fn should_error_if_runner_path_is_wrong() {
+fn should_error_if_runner_path_is_wrong() -> GraderResult<()> {
     dotenv().ok();
-    // get base directory
+
     let base_dir = get_example_dir().join("etc");
     let tmp_dir = TempDir::new("test_runner_path_is_wrong");
 
@@ -86,10 +101,18 @@ fn should_error_if_runner_path_is_wrong() {
     };
 
     let _init_result = instance.init();
+    assert_eq!(
+        _init_result,
+        Err(GraderError::InvalidIo {
+            msg: String::from("No such file or directory (os error 2)")
+        })
+    );
+
+    Ok(())
 }
 
 #[test]
-fn should_read_log_correctly_when_ok() {
+fn should_read_log_correctly_when_ok() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_ok.txt");
@@ -101,7 +124,7 @@ fn should_read_log_correctly_when_ok() {
         memory_limit: 4000
     };
 
-    let result = instance.get_result();
+    let result = instance.get_result()?;
 
     assert_eq!(
         result,
@@ -111,10 +134,11 @@ fn should_read_log_correctly_when_ok() {
             memory_usage: 480,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn should_trigger_when_read_log_with_re() {
+fn should_trigger_when_read_log_with_re() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_re.txt");
@@ -126,7 +150,7 @@ fn should_trigger_when_read_log_with_re() {
         memory_limit: 4000
     };
 
-    let result = instance.get_result();
+    let result = instance.get_result()?;
 
     assert_eq!(
         result,
@@ -136,10 +160,11 @@ fn should_trigger_when_read_log_with_re() {
             memory_usage: 460,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn should_trigger_when_read_log_with_to() {
+fn should_trigger_when_read_log_with_to() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_to.txt");
@@ -151,7 +176,7 @@ fn should_trigger_when_read_log_with_to() {
         memory_limit: 4000
     };
 
-    let result = instance.get_result();
+    let result = instance.get_result()?;
 
     assert_eq!(
         result,
@@ -161,10 +186,11 @@ fn should_trigger_when_read_log_with_to() {
             memory_usage: 448,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn should_trigger_when_read_log_with_sg() {
+fn should_trigger_when_read_log_with_sg() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_sg.txt");
@@ -176,7 +202,7 @@ fn should_trigger_when_read_log_with_sg() {
         memory_limit: 4000
     };
 
-    let result = instance.get_result();
+    let result = instance.get_result()?;
 
     assert_eq!(
         result,
@@ -186,10 +212,11 @@ fn should_trigger_when_read_log_with_sg() {
             memory_usage: 448,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn should_trigger_when_read_log_with_xx() {
+fn should_trigger_when_read_log_with_xx() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_xx.txt");
@@ -201,7 +228,7 @@ fn should_trigger_when_read_log_with_xx() {
         memory_limit: 4000
     };
 
-    let result = instance.get_result();
+    let result = instance.get_result()?;
 
     assert_eq!(
         result,
@@ -210,10 +237,11 @@ fn should_trigger_when_read_log_with_xx() {
             ..Default::default()
         }
     );
+    Ok(())
 }
 
 #[test]
-fn should_trigger_when_read_log_with_mle() {
+fn should_trigger_when_read_log_with_mle() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_mle.txt");
@@ -225,7 +253,7 @@ fn should_trigger_when_read_log_with_mle() {
         memory_limit: 1000
     };
 
-    let result = instance.get_result();
+    let result = instance.get_result()?;
 
     assert_eq!(
         result,
@@ -235,10 +263,11 @@ fn should_trigger_when_read_log_with_mle() {
             memory_usage: 1000,
         }
     );
+    Ok(())
 }
 
 #[test]
-fn should_get_ok() {
+fn should_get_ok() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -254,14 +283,15 @@ fn should_get_ok() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init();
-    let result = instance.run();
+    instance.init()?;
+    let result = instance.run()?;
 
     assert_eq!(result.status, RunVerdict::VerdictOK);
+    Ok(())
 }
 
 #[test]
-fn should_get_tle() {
+fn should_get_tle() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -277,14 +307,15 @@ fn should_get_tle() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init();
-    let result = instance.run();
+    instance.init()?;
+    let result = instance.run()?;
 
     assert_eq!(result.status, RunVerdict::VerdictTLE);
+    Ok(())
 }
 
 #[test]
-fn should_get_re() {
+fn should_get_re() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -300,14 +331,15 @@ fn should_get_re() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init();
-    let result = instance.run();
+    instance.init()?;
+    let result = instance.run()?;
 
     assert_eq!(result.status, RunVerdict::VerdictRE);
+    Ok(())
 }
 
 #[test]
-fn should_get_mle() {
+fn should_get_mle() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -323,8 +355,9 @@ fn should_get_mle() {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init();
-    let result = instance.run();
+    instance.init()?;
+    let result = instance.run()?;
 
     assert_eq!(result.status, RunVerdict::VerdictMLE);
+    Ok(())
 }

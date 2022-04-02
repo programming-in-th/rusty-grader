@@ -1,3 +1,4 @@
+use crate::errors::{GraderError, GraderResult};
 use crate::instance;
 use crate::instance::{Instance, RunVerdict};
 use crate::s;
@@ -77,6 +78,7 @@ impl<'a> std::fmt::Display for Submission<'a> {
         )
     }
 }
+
 impl<'a> Submission<'a> {
     pub fn from(
         task_id: String,
@@ -84,19 +86,19 @@ impl<'a> Submission<'a> {
         language: String,
         code: &[String],
         message_handler: Option<DisplayFn<'a>>,
-    ) -> Self {
+    ) -> GraderResult<Self> {
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
-        fs::create_dir(&tmp_path).unwrap();
+        fs::create_dir(&tmp_path)?;
         let extension = get_code_extension(&language);
         let task_path = get_base_path().join("tasks").join(&task_id);
         if task_path.join("compile_files").is_dir() {
-            let entries = fs::read_dir(task_path.join("compile_files")).unwrap();
+            let entries = fs::read_dir(task_path.join("compile_files"))?;
             for entry in entries {
-                let path = entry.unwrap();
-                fs::copy(&path.path(), tmp_path.join(&path.file_name())).unwrap();
+                let path = entry?;
+                fs::copy(&path.path(), tmp_path.join(&path.file_name()))?;
             }
         }
-        Submission {
+        Ok(Submission {
             task_id,
             submission_id,
             language,
@@ -106,21 +108,21 @@ impl<'a> Submission<'a> {
                 .map(|(idx, val)| {
                     let code_path =
                         tmp_path.join(format!("code_{}.{}", &idx.to_string(), &extension));
-                    let mut file = fs::File::create(&code_path).unwrap();
-                    file.write_all(val.as_bytes()).unwrap();
+                    let mut file = fs::File::create(&code_path)?;
+                    file.write_all(val.as_bytes())?;
 
-                    code_path
+                    Ok(code_path)
                 })
-                .collect(),
-            task_manifest: Manifest::from(task_path.join("manifest.yaml")),
+                .collect::<GraderResult<Vec<_>>>()?,
+            task_manifest: Manifest::from(task_path.join("manifest.yaml"))?,
             tmp_path,
             task_path,
             bin_path: PathBuf::new(),
             message_handler,
-        }
+        })
     }
 
-    pub fn compile(&mut self) {
+    pub fn compile(&mut self) -> GraderResult<()> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Compiling))
         }
@@ -137,7 +139,10 @@ impl<'a> Submission<'a> {
         let mut tmp_compile_files = vec![];
 
         if let Some(compile_files) = &self.task_manifest.compile_files {
-            for compile_file in compile_files.get(&self.language).unwrap() {
+            for compile_file in compile_files
+                .get(&self.language)
+                .ok_or(GraderError::invalid_index())?
+            {
                 tmp_compile_files.push(self.tmp_path.join(&compile_file));
             }
         }
@@ -146,34 +151,39 @@ impl<'a> Submission<'a> {
             args.push(&path);
         });
 
-        let compile_output = Command::new(compiler_path).args(args).output().unwrap();
-        let compile_output_args = String::from_utf8(compile_output.stdout.clone())
-            .unwrap()
+        let compile_output = Command::new(compiler_path).args(args).output()?;
+        let compile_output_args = String::from_utf8(compile_output.stdout.clone())?
             .lines()
             .map(|s| s.to_string())
             .collect::<Vec<String>>();
 
-        let return_code: i32 = compile_output_args.get(0).unwrap().parse().unwrap();
+        let return_code: i32 = compile_output_args
+            .get(0)
+            .ok_or(GraderError::invalid_index())?
+            .parse()?;
 
         // if return_code != 0 {
         //     return Err(Error::from_raw_os_error(return_code));
         // }
 
-        self.bin_path = PathBuf::from(compile_output_args.get(1).unwrap());
+        self.bin_path = PathBuf::from(
+            compile_output_args
+                .get(1)
+                .ok_or(GraderError::invalid_index())?,
+        );
 
         if let Some(message_handler) = &mut self.message_handler {
             match return_code {
                 0 => message_handler(SubmissionMessage::Status(SubmissionStatus::Compiled)),
                 _ => message_handler(SubmissionMessage::Status(
-                    SubmissionStatus::CompilationError(
-                        String::from_utf8(compile_output.stdout).unwrap(),
-                    ),
+                    SubmissionStatus::CompilationError(String::from_utf8(compile_output.stdout)?),
                 )),
             }
         }
+        Ok(())
     }
 
-    fn run_each(&mut self, checker: &Path, runner: &Path, index: u64) -> RunResult {
+    fn run_each(&mut self, checker: &Path, runner: &Path, index: u64) -> GraderResult<RunResult> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Running(index)))
         }
@@ -188,16 +198,16 @@ impl<'a> Submission<'a> {
             .join(format!("{}.sol", index));
 
         let mut instance = instance! {
-            time_limit: self.task_manifest.time_limit.unwrap(),
-            memory_limit: self.task_manifest.memory_limit.unwrap() * 1000,
+            time_limit: self.task_manifest.time_limit.ok_or(GraderError::invalid_value())?,
+            memory_limit: self.task_manifest.memory_limit.ok_or(GraderError::invalid_value())? * 1000,
             bin_path: self.bin_path.clone(),
             input_path: input_path.clone(),
             output_path: output_path.clone(),
             runner_path: runner.to_path_buf()
         };
 
-        instance.init();
-        let instance_result = instance.run();
+        instance.init()?;
+        let instance_result = instance.run()?;
 
         let mut run_result = RunResult::from(
             self.submission_id.to_owned(),
@@ -209,19 +219,25 @@ impl<'a> Submission<'a> {
         run_result.status = match instance_result.status {
             RunVerdict::VerdictOK => {
                 let args = vec![&input_path, &output_path, &sol_path];
-                let checker_result = Command::new(&checker).args(args).output().unwrap();
-                let checker_output = String::from_utf8(checker_result.stdout)
-                    .unwrap()
+                let checker_result = Command::new(&checker).args(args).output()?;
+                let checker_output = String::from_utf8(checker_result.stdout)?
                     .trim_end_matches('\n')
                     .lines()
                     .map(|s| s.to_string())
                     .collect::<Vec<String>>();
 
-                run_result.score = checker_output.get(1).unwrap().parse().unwrap();
+                run_result.score = checker_output
+                    .get(1)
+                    .ok_or(GraderError::invalid_index())?
+                    .parse()?;
                 run_result.message = checker_output
                     .get(2)
                     .map_or(String::new(), |v| v.to_owned());
-                checker_output.get(0).unwrap().as_str().to_owned()
+                checker_output
+                    .get(0)
+                    .ok_or(GraderError::invalid_index())?
+                    .as_str()
+                    .to_owned()
             }
             RunVerdict::VerdictTLE => s!("Time Limit Exceeded"),
             RunVerdict::VerdictMLE => s!("Memory Limit Exceeded"),
@@ -237,10 +253,10 @@ impl<'a> Submission<'a> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::RunResult(run_result.clone()))
         }
-        run_result
+        Ok(run_result)
     }
 
-    pub fn run(&mut self) -> SubmissionResult {
+    pub fn run(&mut self) -> GraderResult<SubmissionResult> {
         // if !self.task_manifest.output_only {
         let checker =
             self.task_manifest
@@ -289,7 +305,7 @@ impl<'a> Submission<'a> {
                 let run_result = if skip {
                     RunResult::from(self.submission_id.to_owned(), index, 0.0, 0)
                 } else {
-                    self.run_each(&checker, &runner, index)
+                    self.run_each(&checker, &runner, index)?
                 };
                 args.push(run_result.score.to_string());
                 skip = &run_result.status != "Correct" && &run_result.status != "Partially Correct";
@@ -297,12 +313,10 @@ impl<'a> Submission<'a> {
                 group_result.run_result.push(run_result);
             }
             if !skip {
-                let grouper_result = Command::new(&grouper).args(args).output().unwrap();
-                group_result.score = String::from_utf8(grouper_result.stdout)
-                    .unwrap()
+                let grouper_result = Command::new(&grouper).args(args).output()?;
+                group_result.score = String::from_utf8(grouper_result.stdout)?
                     .trim_end_matches('\n')
-                    .parse()
-                    .unwrap();
+                    .parse()?;
 
                 total_score += group_result.score;
             }
@@ -325,12 +339,12 @@ impl<'a> Submission<'a> {
                 submission_result.clone(),
             )));
         }
-        submission_result
+        Ok(submission_result)
     }
 }
 
 impl<'a> Drop for Submission<'a> {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.tmp_path).expect("Unable to remove submission folder.");
+        fs::remove_dir_all(&self.tmp_path);
     }
 }
