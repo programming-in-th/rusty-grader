@@ -1,3 +1,4 @@
+use crate::errors::{GraderError, GraderResult};
 use crate::instance;
 use crate::instance::{Instance, RunVerdict};
 use crate::s;
@@ -5,7 +6,6 @@ use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
 use std::{fs, io::Write, path::Path, path::PathBuf, process::Command};
-use crate::errors::{GraderError, GraderResult};
 
 pub mod manifest;
 pub mod result;
@@ -183,12 +183,7 @@ impl<'a> Submission<'a> {
         Ok(())
     }
 
-    fn run_each(
-        &mut self,
-        checker: &Path,
-        runner: &Path,
-        index: u64,
-    ) -> GraderResult<RunResult> {
+    fn run_each(&mut self, checker: &Path, runner: &Path, index: u64) -> GraderResult<RunResult> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Running(index)))
         }

@@ -37,8 +37,7 @@ pub enum GraderError {
     InvalidToStr {
         #[cfg(feature = "backtraces")]
         backtrace: Backtrace,
-    }
-
+    },
 }
 impl GraderError {
     pub fn invalid_utf8(msg: impl ToString) -> Self {
@@ -99,7 +98,6 @@ impl From<std::io::Error> for GraderError {
         Self::invalid_io(source)
     }
 }
-
 
 impl From<std::num::ParseIntError> for GraderError {
     fn from(source: std::num::ParseIntError) -> Self {

@@ -1,7 +1,7 @@
 use crate::combine_argument;
+use crate::errors::{GraderError, GraderResult};
 use crate::utils::get_env;
 use std::{fs, path::PathBuf, process::Command};
-use crate::errors::{GraderError, GraderResult};
 
 #[cfg(test)]
 mod tests;
@@ -19,7 +19,6 @@ pub struct Instance {
     pub output_path: PathBuf,
     pub runner_path: PathBuf,
 }
-
 
 #[derive(Debug, PartialEq)]
 pub enum RunVerdict {
@@ -50,7 +49,10 @@ impl Instance {
             "-b",
             self.box_id.to_string(),
             "-M",
-            self.log_file.to_str().ok_or(GraderError::invalid_to_str())?.to_string(),
+            self.log_file
+                .to_str()
+                .ok_or(GraderError::invalid_to_str())?
+                .to_string(),
             "-t",
             self.time_limit.to_string(),
             "-w",
@@ -126,9 +128,11 @@ impl Instance {
 
         fs::copy(
             &self.bin_path,
-            &self
-                .box_path
-                .join(self.bin_path.file_name().ok_or(GraderError::invalid_to_str())?),
+            &self.box_path.join(
+                self.bin_path
+                    .file_name()
+                    .ok_or(GraderError::invalid_to_str())?,
+            ),
         )?;
 
         fs::copy(&self.runner_path, &self.box_path.join("runner"))?;
