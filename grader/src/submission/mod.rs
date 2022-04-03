@@ -1,7 +1,6 @@
 use crate::errors::{GraderError, GraderResult};
 use crate::instance;
 use crate::instance::{Instance, RunVerdict};
-use crate::s;
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
@@ -80,13 +79,19 @@ impl<'a> std::fmt::Display for Submission<'a> {
 }
 
 impl<'a> Submission<'a> {
-    pub fn from(
-        task_id: String,
-        submission_id: String,
-        language: String,
+    pub fn from<T>(
+        task_id: T,
+        submission_id: T,
+        language: T,
         code: &[String],
         message_handler: Option<DisplayFn<'a>>,
-    ) -> GraderResult<Self> {
+    ) -> GraderResult<Self>
+    where
+        T: Into<String>,
+    {
+        let task_id = task_id.into();
+        let submission_id = submission_id.into();
+        let language = language.into();
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
         fs::create_dir(&tmp_path)?;
         let extension = get_code_extension(&language);
@@ -239,11 +244,11 @@ impl<'a> Submission<'a> {
                     .as_str()
                     .to_owned()
             }
-            RunVerdict::VerdictTLE => s!("Time Limit Exceeded"),
-            RunVerdict::VerdictMLE => s!("Memory Limit Exceeded"),
-            RunVerdict::VerdictRE => s!("Runtime Error"),
-            RunVerdict::VerdictSG => s!("Signal Error"),
-            _ => s!("Judge Error"),
+            RunVerdict::VerdictTLE => String::from("Time Limit Exceeded"),
+            RunVerdict::VerdictMLE => String::from("Memory Limit Exceeded"),
+            RunVerdict::VerdictRE => String::from("Runtime Error"),
+            RunVerdict::VerdictSG => String::from("Signal Error"),
+            _ => String::from("Judge Error"),
         };
 
         if run_result.message.is_empty() {
