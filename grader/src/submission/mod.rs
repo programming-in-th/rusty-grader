@@ -1,7 +1,6 @@
 use crate::errors::{GraderError, GraderResult};
 use crate::instance;
 use crate::instance::{Instance, RunVerdict};
-use crate::s;
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
 use manifest::Manifest;
