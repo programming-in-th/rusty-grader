@@ -42,7 +42,7 @@ sudo make -C ${SCRIPTPATH}/isolate install
 
 sudo groupadd ${ISOLATE_GROUPNAME} 
 sudo chown root:${ISOLATE_GROUPNAME} /usr/local/bin/isolate
-if [ $GITHUB_ACTIONS -eq 1 ]; then
+if [ -z ${GITHUB_ACTIONS} ]; then
   echo "${green}Setting isolate permissions to 777 for GitHub Actions${green}"
   sudo chmod 4777 /usr/local/bin/isolate
 else
