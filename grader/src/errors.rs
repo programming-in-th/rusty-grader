@@ -112,3 +112,30 @@ impl From<std::num::ParseFloatError> for GraderError {
 }
 
 pub type GraderResult<T> = core::result::Result<T, GraderError>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn invalid_utf8_works_for_strings() {
+        let error = GraderError::invalid_utf8("my text");
+        match error {
+            GraderError::InvalidUtf8 { msg, .. } => {
+                assert_eq!(msg, "my text");
+            }
+            _ => panic!("expect different error"),
+        }
+    }
+
+    #[test]
+    fn invalid_utf8_works_for_errors() {
+        let original = String::from_utf8(vec![0x80]).unwrap_err();
+        let error = GraderError::invalid_utf8(original);
+        match error {
+            GraderError::InvalidUtf8 { msg, .. } => {
+                assert_eq!(msg, "invalid utf-8 sequence of 1 bytes from index 0");
+            }
+            _ => panic!("expect different error"),
+        }
+    }
+}
