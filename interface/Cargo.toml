@@ -1,0 +1,15 @@
+[package]
+name = "interface"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dotenv = "0.15"
+tokio = { version = "1", features = ["full"] }
+tokio-postgres = "0.7.6"
+grader = { path = "../grader" }
+postgres-openssl = "0.5.0"
+openssl = "0.10.41"
+realtime-rs = { git = "https://github.com/programming-in-th/realtime-rs" }
