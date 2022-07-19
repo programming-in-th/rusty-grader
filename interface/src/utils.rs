@@ -1,9 +1,6 @@
 use serde_json::Value;
 
 pub fn parse_code(code: &str) -> Vec<String> {
-    println!("{}", code);
-    let tmp = "{\"\\\\\\\",\\\"\\\\\"}";
-    println!("{}", tmp == code);
     let code = code.trim_end_matches("}").trim_start_matches("{");
     let mut ans = Vec::new();
     let mut start_string = false;

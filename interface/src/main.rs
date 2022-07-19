@@ -31,10 +31,8 @@ async fn main() {
     let stream = {
         rx.for_each(|data| async {
             let (task_id, id, language, code) = data;
-            println!(
-                "submission:\n{:?}",
-                runner::judge(task_id, id, language, &code, &client)
-            );
+            // feature: check error
+            runner::judge(task_id, id, language, &code, &client).ok();
         })
     };
 
