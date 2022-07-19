@@ -350,6 +350,6 @@ impl<'a> Submission<'a> {
 
 impl<'a> Drop for Submission<'a> {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.tmp_path);
+        fs::remove_dir_all(&self.tmp_path).ok();
     }
 }

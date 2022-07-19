@@ -2,14 +2,14 @@ use dotenv::dotenv;
 use futures::{channel::mpsc::UnboundedSender, StreamExt};
 use futures_util::{future, pin_mut};
 use grader::submission::Submission;
-use openssl::ssl::{SslConnector, SslMethod};
-use postgres_openssl::MakeTlsConnector;
-use realtime_rs::connection::Socket;
-use serde_json::Value;
+
 use std::env;
 use tokio_postgres::Client;
 
-type Data = (String, String, String, Vec<String>);
+mod connection;
+mod utils;
+
+use connection::Data;
 
 fn judge(
     task_id: impl Into<String>,
@@ -38,90 +38,6 @@ fn judge(
     .unwrap();
     submission.compile().unwrap();
     let _result = submission.run();
-}
-
-fn parse_code(code: &str) -> Vec<String> {
-    let code = code.trim_end_matches("}").trim_start_matches("{");
-    let mut ans = Vec::new();
-    let mut start_string = false;
-    let mut extra = false;
-    let mut pre = '\0';
-    for ch in code.chars() {
-        if ch == '"' && pre != '\\' {
-            start_string = !start_string;
-        }
-        if pre == ',' && start_string == false {
-            start_string = true;
-            extra = true;
-            ans.push('"');
-        }
-        if ch == ',' && start_string == true && extra == true {
-            start_string = false;
-            extra = false;
-            ans.push('"');
-        }
-        ans.push(ch);
-        pre = ch;
-    }
-    if extra {
-        ans.push('"');
-    }
-    let ans: String = ans.iter().collect();
-    let code = "[".to_string() + &ans + "]";
-    serde_json::from_str::<Value>(&code)
-        .unwrap()
-        .as_array()
-        .unwrap()
-        .iter()
-        .map(|x| x.as_str().unwrap().to_string())
-        .collect()
-}
-
-async fn connect_socket(url: &str, tx: UnboundedSender<Data>) {
-    let mut socket = Socket::new(url);
-    socket.connect().await.unwrap();
-    let channel = socket.set_channel("realtime:public");
-    // let tx = Rc::new(tx);
-    channel.join().on(
-        "UPDATE",
-        Box::new(|data| {
-            for x in data.keys().into_iter() {
-                println!("{}", x);
-            }
-            let table = data["record"].as_object().unwrap();
-            let id = table["id"].as_str().unwrap();
-            let task_id = table["taskId"].as_str().unwrap();
-            let language = table["language"].as_str().unwrap();
-            let code = parse_code(table["code"].as_str().unwrap());
-
-            tx.unbounded_send((
-                task_id.to_string(),
-                id.to_string(),
-                language.to_string(),
-                code,
-            ))
-            .unwrap();
-        }),
-    );
-
-    socket.listen().await;
-}
-
-async fn connect_db(cert_path: String, db_string: String) -> Client {
-    let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
-    builder.set_ca_file(cert_path).unwrap();
-    let connector = MakeTlsConnector::new(builder.build());
-
-    let (client, connection) = tokio_postgres::connect(&db_string, connector)
-        .await
-        .unwrap();
-
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-    client
 }
 
 async fn clear_in_queue(client: &Client, tx: UnboundedSender<Data>) {
@@ -154,11 +70,11 @@ async fn main() {
 
     let (tx, rx) = futures::channel::mpsc::unbounded::<Data>();
 
-    let client = connect_db(cert_path, db_string).await;
+    let client = connection::connect_db(cert_path, db_string).await;
 
     clear_in_queue(&client, tx.clone()).await;
 
-    let socket_listen = connect_socket(&url, tx.clone());
+    let socket_listen = connection::connect_socket(&url, tx.clone());
 
     let stream = {
         rx.for_each(|data| async {
@@ -177,7 +93,7 @@ mod tests {
     #[test]
     fn test_parse_code() {
         let code = "{\"hello , world\",quote,\"\\\",\\\"q\"}";
-        let ans = parse_code(code);
+        let ans = utils::parse_code(code);
         assert_eq!(ans, vec!["hello , world", "quote", "\",\"q"]);
     }
 }
