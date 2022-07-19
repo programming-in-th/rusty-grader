@@ -36,3 +36,15 @@ pub fn parse_code(code: &str) -> Vec<String> {
         .map(|x| x.as_str().unwrap().to_string())
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_code() {
+        let code = "{\"hello , world\",quote,\"\\\",\\\"q\"}";
+        let ans = parse_code(code);
+        assert_eq!(ans, vec!["hello , world", "quote", "\",\"q"]);
+    }
+}
