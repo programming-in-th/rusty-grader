@@ -5,6 +5,7 @@ use futures_util::{future, pin_mut};
 use std::env;
 
 mod connection;
+mod constants;
 mod runner;
 mod utils;
 
@@ -30,21 +31,13 @@ async fn main() {
     let stream = {
         rx.for_each(|data| async {
             let (task_id, id, language, code) = data;
-            runner::judge(task_id, id, language, &code);
+            println!(
+                "submission:\n{:?}",
+                runner::judge(task_id, id, language, &code, &client)
+            );
         })
     };
 
     pin_mut!(socket_listen, stream);
     future::select(socket_listen, stream).await;
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_parse_code() {
-        let code = "{\"hello , world\",quote,\"\\\",\\\"q\"}";
-        let ans = utils::parse_code(code);
-        assert_eq!(ans, vec!["hello , world", "quote", "\",\"q"]);
-    }
 }

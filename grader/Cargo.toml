@@ -9,3 +9,4 @@ edition = "2018"
 dotenv = "0.15"
 yaml-rust = "0.4"
 thiserror = "1.0"
+serde = { version = "1.0", features = ["derive"] }

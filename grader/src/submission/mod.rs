@@ -93,6 +93,7 @@ impl<'a> Submission<'a> {
         let submission_id = submission_id.into();
         let language = language.into();
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
+        fs::remove_dir_all(&tmp_path).ok();
         fs::create_dir(&tmp_path)?;
         let extension = get_code_extension(&language);
         let task_path = get_base_path().join("tasks").join(&task_id);

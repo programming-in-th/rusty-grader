@@ -1,4 +1,6 @@
-#[derive(Default, Debug, PartialEq, Clone)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Default, Debug, PartialEq, Clone, Deserialize, Serialize)]
 pub struct RunResult {
     pub submission_id: String,
     pub test_index: u64,
@@ -21,7 +23,7 @@ impl RunResult {
     }
 }
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct GroupResult {
     pub score: f64,
     pub full_score: u64,
