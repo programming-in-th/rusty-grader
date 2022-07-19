@@ -17,10 +17,10 @@ sudo apt-get update -y
 sudo apt-get install --no-install-recommends -y build-essential cargo openjdk-17-jdk libcap-dev sysfsutils golang
 
 echo "${green}Setting up isolate...${green}"
-echo 0 > /proc/sys/kernel/randomize_va_space
-echo never > /sys/kernel/mm/transparent_hugepage/enabled
-echo never > /sys/kernel/mm/transparent_hugepage/defrag
-echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag
+sudo sh -c "echo 0 > /proc/sys/kernel/randomize_va_space"
+sudo sh -c "echo never > /sys/kernel/mm/transparent_hugepage/enabled"
+sudo sh -c "echo never > /sys/kernel/mm/transparent_hugepage/defrag"
+sudo sh -c "echo 0 > /sys/kernel/mm/transparent_hugepage/khugepaged/defrag"
 
 if ! grep -Fxq "kernel.randomize_va_space = 0" /etc/sysctl.d/10-isolate.conf; then
   sudo sh -c 'echo "kernel.randomize_va_space = 0" >> /etc/sysctl.d/10-isolate.conf'
