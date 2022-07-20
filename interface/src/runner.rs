@@ -25,7 +25,7 @@ pub fn judge(
     let update_status = move |msg: String| {
         block_on(async {
             client
-                .query(
+                .execute(
                     "UPDATE \"Submission\" SET status = $1 WHERE id = $2",
                     &[&msg, &callback_sub.parse::<i32>().unwrap()],
                 )
@@ -65,7 +65,7 @@ pub fn judge(
         result.push(group);
         block_on(async {
             client
-                .query(
+                .execute(
                     "UPDATE \"Submission\" SET groups = $1, score = $2, time = $3, memory = $4 WHERE id = $5",
                     &[&data, &(score as i32), &time, &memory, &callback_result.parse::<i32>().unwrap()],
                 )
