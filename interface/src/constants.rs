@@ -2,11 +2,12 @@ use grader::submission::SubmissionStatus;
 
 pub fn parse_submission_status(status: SubmissionStatus) -> String {
     match status {
-        SubmissionStatus::Compiling => "compiling".to_string(),
-        SubmissionStatus::Compiled => "compiled".to_string(),
-        SubmissionStatus::Running(idx) => format!("running on test #{}", idx),
+        SubmissionStatus::Compiling => "Compiling".to_string(),
+        SubmissionStatus::Compiled => "Compiled".to_string(),
+        SubmissionStatus::CompilationError(_) => "Compilation Error".to_string(),
+        SubmissionStatus::Running(idx) => format!("Running on test #{}", idx),
         SubmissionStatus::Done(_) => "Completed".to_string(),
-        _ => "Running".to_string(),
+        _ => "Judge Error".to_string(),
     }
 }
 
