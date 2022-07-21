@@ -115,7 +115,6 @@ impl<'a> Submission<'a> {
         fs::create_dir(&tmp_path)?;
         let extension = get_code_extension(&language);
         let task_path = get_base_path().join("tasks").join(&task_id);
-        println!("task_path: {:?}", task_path);
 
         if task_path.is_dir() == false {
             if message_handler.is_some() {
