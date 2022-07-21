@@ -156,10 +156,10 @@ impl Drop for Instance {
         Command::new(get_env("ISOLATE_PATH"))
             .args(&["--cleanup", "--cg", "-b"])
             .arg(self.box_id.to_string())
-            .output();
+            .output().ok();
 
         if self.log_file.is_file() {
-            fs::remove_file(&self.log_file);
+            fs::remove_file(&self.log_file).ok();
         }
     }
 }

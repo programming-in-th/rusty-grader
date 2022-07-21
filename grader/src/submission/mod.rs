@@ -79,6 +79,23 @@ impl<'a> std::fmt::Display for Submission<'a> {
     }
 }
 
+impl<'a> std::fmt::Debug for Submission<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "Submission {} {} {} {:?} {:?} {:?} {:?} {:?}",
+            self.task_id,
+            self.submission_id,
+            self.language,
+            self.code_path,
+            self.task_manifest,
+            self.tmp_path,
+            self.task_path,
+            self.bin_path
+        )
+    }
+}
+
 impl<'a> Submission<'a> {
     pub fn from<T>(
         task_id: T,
@@ -98,8 +115,12 @@ impl<'a> Submission<'a> {
         fs::create_dir(&tmp_path)?;
         let extension = get_code_extension(&language);
         let task_path = get_base_path().join("tasks").join(&task_id);
+        println!("task_path: {:?}", task_path);
+
         if task_path.is_dir() == false {
-            message_handler.unwrap()(SubmissionMessage::Status(SubmissionStatus::TaskNotFound));
+            if message_handler.is_some() {
+                message_handler.unwrap()(SubmissionMessage::Status(SubmissionStatus::TaskNotFound));
+            }
             return Err(GraderError::task_not_found());
         }
         if task_path.join("compile_files").is_dir() {
@@ -133,7 +154,7 @@ impl<'a> Submission<'a> {
         })
     }
 
-    pub fn compile(&mut self) -> GraderResult<()> {
+    pub fn compile(&mut self) -> GraderResult<bool> {
         if let Some(message_handler) = &mut self.message_handler {
             message_handler(SubmissionMessage::Status(SubmissionStatus::Compiling))
         }
@@ -173,16 +194,6 @@ impl<'a> Submission<'a> {
             .ok_or(GraderError::invalid_index())?
             .parse()?;
 
-        // if return_code != 0 {
-        //     return Err();
-        // }
-
-        self.bin_path = PathBuf::from(
-            compile_output_args
-                .get(1)
-                .ok_or(GraderError::invalid_index())?,
-        );
-
         if let Some(message_handler) = &mut self.message_handler {
             match return_code {
                 0 => message_handler(SubmissionMessage::Status(SubmissionStatus::Compiled)),
@@ -191,7 +202,17 @@ impl<'a> Submission<'a> {
                 )),
             }
         }
-        Ok(())
+
+        if return_code == 0 {
+            self.bin_path = PathBuf::from(
+                compile_output_args
+                    .get(1)
+                    .ok_or(GraderError::invalid_index())?,
+            );
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn run_each(&mut self, checker: &Path, runner: &Path, index: u64) -> GraderResult<RunResult> {
@@ -269,6 +290,16 @@ impl<'a> Submission<'a> {
 
     pub fn run(&mut self) -> GraderResult<SubmissionResult> {
         // if !self.task_manifest.output_only {
+
+        if self.bin_path == PathBuf::new() {
+            return Ok(SubmissionResult {
+                score: 0.0,
+                full_score: 0,
+                submission_id: self.submission_id.clone(),
+                group_result: vec![],
+            });
+        }
+
         let checker =
             self.task_manifest
                 .checker
