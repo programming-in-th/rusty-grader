@@ -38,6 +38,11 @@ pub enum GraderError {
         #[cfg(feature = "backtraces")]
         backtrace: Backtrace,
     },
+    #[error("Error task not found")]
+    TaskNotFound {
+        #[cfg(feature = "backtraces")]
+        backtrace: Backtrace,
+    },
 }
 impl GraderError {
     pub fn invalid_utf8(msg: impl ToString) -> Self {
@@ -81,6 +86,12 @@ impl GraderError {
 
     pub fn invalid_to_str() -> Self {
         GraderError::InvalidToStr {
+            #[cfg(feature = "backtraces")]
+            backtrace: Backtrace::capture(),
+        }
+    }
+    pub fn task_not_found() -> Self {
+        GraderError::TaskNotFound {
             #[cfg(feature = "backtraces")]
             backtrace: Backtrace::capture(),
         }

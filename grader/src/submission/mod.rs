@@ -15,6 +15,7 @@ mod tests;
 #[derive(Debug)]
 pub enum SubmissionStatus {
     Initialized,
+    TaskNotFound,
     Compiling,
     Compiled,
     CompilationError(String),
@@ -97,6 +98,10 @@ impl<'a> Submission<'a> {
         fs::create_dir(&tmp_path)?;
         let extension = get_code_extension(&language);
         let task_path = get_base_path().join("tasks").join(&task_id);
+        if task_path.is_dir() == false {
+            message_handler.unwrap()(SubmissionMessage::Status(SubmissionStatus::TaskNotFound));
+            return Err(GraderError::task_not_found());
+        }
         if task_path.join("compile_files").is_dir() {
             let entries = fs::read_dir(task_path.join("compile_files"))?;
             for entry in entries {
@@ -169,7 +174,7 @@ impl<'a> Submission<'a> {
             .parse()?;
 
         // if return_code != 0 {
-        //     return Err(Error::from_raw_os_error(return_code));
+        //     return Err();
         // }
 
         self.bin_path = PathBuf::from(
