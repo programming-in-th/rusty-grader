@@ -190,8 +190,7 @@ impl<'a> Submission<'a> {
 
         let return_code: i32 = compile_output_args
             .get(0)
-            .ok_or(GraderError::invalid_index())?
-            .parse()?;
+            .map_or(1, |s| s.parse::<i32>().unwrap_or(1));
 
         if let Some(message_handler) = &mut self.message_handler {
             match return_code {
@@ -293,7 +292,7 @@ impl<'a> Submission<'a> {
         if self.bin_path == PathBuf::new() {
             return Ok(SubmissionResult {
                 score: 0.0,
-                full_score: 0,
+                full_score: 0.0,
                 submission_id: self.submission_id.clone(),
                 group_result: vec![],
             });
@@ -326,7 +325,7 @@ impl<'a> Submission<'a> {
 
         let mut last_test = 1;
         let mut total_score: f64 = 0.0;
-        let mut total_full_score: u64 = 0;
+        let mut total_full_score: f64 = 0.0;
         let mut group_results = Vec::new();
 
         for (group_index, (full_score, tests)) in

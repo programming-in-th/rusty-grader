@@ -4,7 +4,7 @@ memory_limit: 32
 checker: "lcmp"
 grouper: "min"
 groups:
-  - full_score: 60
+  - full_score: 60.0
     tests: 3
-  - full_score: 40
+  - full_score: 40.0
     tests: 2

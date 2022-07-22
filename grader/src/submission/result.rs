@@ -26,14 +26,14 @@ impl RunResult {
 #[derive(Default, Debug, Clone, Serialize, Deserialize)]
 pub struct GroupResult {
     pub score: f64,
-    pub full_score: u64,
+    pub full_score: f64,
     pub submission_id: String,
     pub group_index: u64,
     pub run_result: Vec<RunResult>,
 }
 
 impl GroupResult {
-    pub fn from(full_score: u64, submission_id: String, index: u64) -> Self {
+    pub fn from(full_score: f64, submission_id: String, index: u64) -> Self {
         GroupResult {
             full_score,
             submission_id,
@@ -46,7 +46,7 @@ impl GroupResult {
 #[derive(Default, Debug, Clone)]
 pub struct SubmissionResult {
     pub score: f64,
-    pub full_score: u64,
+    pub full_score: f64,
     pub submission_id: String,
     pub group_result: Vec<GroupResult>,
 }

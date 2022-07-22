@@ -12,7 +12,7 @@ pub struct Manifest {
     pub compile_files: Option<BTreeMap<String, Vec<String>>>,
     pub checker: Option<String>,
     pub grouper: Option<String>,
-    pub groups: Vec<(u64, u64)>,
+    pub groups: Vec<(f64, u64)>,
 }
 
 impl Manifest {
@@ -88,9 +88,9 @@ impl Manifest {
                         .map(|group| {
                             Ok((
                                 group["full_score"]
-                                    .as_i64()
+                                    .as_f64()
                                     .ok_or(GraderError::invalid_value())?
-                                    as u64,
+                                    as f64,
                                 group["tests"]
                                     .as_i64()
                                     .ok_or(GraderError::invalid_value())?
