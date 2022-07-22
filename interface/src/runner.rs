@@ -8,6 +8,18 @@ use grader::{
 use serde_json;
 use tokio_postgres::Client;
 
+pub fn update_status(msg: String, client: &Client, submission_id: &str) {
+    block_on(async {
+        client
+            .execute(
+                "UPDATE \"Submission\" SET status = $1 WHERE id = $2",
+                &[&msg, &submission_id.parse::<i32>().unwrap()],
+            )
+            .await
+            .unwrap();
+    });
+}
+
 pub fn judge(
     task_id: impl Into<String>,
     submission_id: impl Into<String>,
@@ -21,18 +33,6 @@ pub fn judge(
 
     let callback_sub = submission_id.to_owned();
     let callback_result = submission_id.to_owned();
-
-    let update_status = move |msg: String| {
-        block_on(async {
-            client
-                .execute(
-                    "UPDATE \"Submission\" SET status = $1 WHERE id = $2",
-                    &[&msg, &callback_sub.parse::<i32>().unwrap()],
-                )
-                .await
-                .unwrap();
-        });
-    };
 
     let mut result = vec![];
     let mut score = 0.0;
@@ -81,7 +81,7 @@ pub fn judge(
         code,
         Some(Box::new(|input| match input {
             SubmissionMessage::Status(status) => {
-                update_status(parse_submission_status(status));
+                update_status(parse_submission_status(status), client, &callback_sub);
             }
             SubmissionMessage::GroupResult(result) => {
                 update_result(result);

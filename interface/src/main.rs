@@ -31,8 +31,9 @@ async fn main() {
     let stream = {
         rx.for_each(|data| async {
             let (task_id, id, language, code) = data;
-            // feature: check error
-            runner::judge(task_id, id, language, &code, &client).ok();
+            if runner::judge(task_id, id.clone(), language, &code, &client).is_err() {
+                runner::update_status(constants::ERROR_MSG.to_string(), &client, &id);
+            }
         })
     };
 
