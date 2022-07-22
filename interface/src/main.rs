@@ -28,14 +28,13 @@ async fn main() {
 
     let socket_listen = connection::connect_socket(&url, tx.clone());
 
-    let stream = {
-        rx.for_each(|data| async {
-            let (task_id, id, language, code) = data;
-            if runner::judge(task_id, id.clone(), language, &code, &client).is_err() {
-                runner::update_status(constants::ERROR_MSG.to_string(), &client, &id);
-            }
-        })
-    };
+    let stream = rx.for_each(|data| async {
+        let (task_id, id, language, code) = data;
+        let result = runner::judge(task_id, id.clone(), language, &code, &client);
+        if result.is_err() {
+            runner::update_status(constants::ERROR_MSG.to_string(), &client, &id);
+        }
+    });
 
     pin_mut!(socket_listen, stream);
     future::select(socket_listen, stream).await;

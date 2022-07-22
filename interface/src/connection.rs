@@ -13,25 +13,29 @@ pub async fn connect_socket(url: &str, tx: UnboundedSender<Data>) {
     let mut socket = Socket::new(url);
     socket.connect().await.unwrap();
     let channel = socket.set_channel("realtime:public");
-    // let tx = Rc::new(tx);
     channel.join().on(
-        "UPDATE",
+        "*",
         Box::new(|data| {
-            let table = data["record"].as_object().unwrap();
-            let status = table["status"].as_str().unwrap();
-            let id = table["id"].as_str().unwrap();
-            let task_id = table["taskId"].as_str().unwrap();
-            let language = table["language"].as_str().unwrap();
-            let code = utils::parse_code(table["code"].as_str().unwrap());
+            println!("{:?}", data);
+            if data.contains_key("record") {
+                let table = data["record"].as_object().unwrap();
+                let status = table["status"].as_str().unwrap();
+                if status == PULL_MSG {
+                    let id = table["id"].as_str().unwrap();
+                    let task_id = table["taskId"].as_str().unwrap();
+                    let language = table["language"].as_str().unwrap();
+                    println!("call parsing: {:?}", table["code"].as_str().unwrap());
+                    let code = utils::parse_code(table["code"].as_str().unwrap());
 
-            if status == PULL_MSG {
-                tx.unbounded_send((
-                    task_id.to_string(),
-                    id.to_string(),
-                    language.to_string(),
-                    code,
-                ))
-                .unwrap();
+                    println!("calling judge with {:?} {:?}\n{:?}", task_id, id, code);
+                    tx.unbounded_send((
+                        task_id.to_string(),
+                        id.to_string(),
+                        language.to_string(),
+                        code,
+                    ))
+                    .unwrap();
+                }
             }
         }),
     );

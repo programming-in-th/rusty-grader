@@ -89,6 +89,7 @@ pub fn judge(
             _ => {}
         })),
     )?;
+
     submission.compile()?;
     let _result = submission.run()?;
     Ok(())
