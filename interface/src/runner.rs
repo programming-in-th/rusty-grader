@@ -1,4 +1,3 @@
-use crate::connection::Data;
 use crate::constants::{parse_submission_status, PULL_MSG};
 use futures::{channel::mpsc::UnboundedSender, executor::block_on};
 use grader::{
@@ -95,21 +94,18 @@ pub fn judge(
     Ok(())
 }
 
-pub async fn clear_in_queue(client: &Client, tx: UnboundedSender<Data>) {
+pub async fn clear_in_queue(client: &Client, tx: UnboundedSender<String>) {
     let rows = client
         .query(
-            "SELECT \"taskId\", id, language, code  FROM \"Submission\" WHERE status = $1",
+            "SELECT id FROM \"Submission\" WHERE status = $1",
             &[&PULL_MSG],
         )
         .await
         .unwrap();
 
     for row in rows.iter() {
-        let task_id: String = row.get(0);
-        let id: i32 = row.get(1);
+        let id: i32 = row.get(0);
         let id = id.to_string();
-        let language: String = row.get(2);
-        let code: Vec<String> = row.get(3);
-        tx.unbounded_send((task_id, id, language, code)).unwrap();
+        tx.unbounded_send(id).unwrap();
     }
 }
