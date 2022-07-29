@@ -65,8 +65,16 @@ pub fn judge(
         block_on(async {
             client
                 .execute(
-                    "UPDATE \"Submission\" SET groups = $1, score = $2, time = $3, memory = $4 WHERE id = $5",
-                    &[&data, &(score as i32), &time, &memory, &callback_result.parse::<i32>().unwrap()],
+                    "UPDATE \"Submission\" SET \
+                    groups = $1, score = $2, time = $3, \
+                    memory = $4 WHERE id = $5",
+                    &[
+                        &data,
+                        &(score as i32),
+                        &time,
+                        &memory,
+                        &callback_result.parse::<i32>().unwrap(),
+                    ],
                 )
                 .await
                 .unwrap();

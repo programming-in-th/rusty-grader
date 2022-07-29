@@ -9,7 +9,7 @@ use crate::constants::PULL_MSG;
 pub async fn connect_socket(url: &str, tx: UnboundedSender<String>) {
     let mut socket = Socket::new(url);
     socket.connect().await.unwrap();
-    let channel = socket.set_channel("realtime:public");
+    let channel = socket.set_channel("realtime:public:Submission:status=eq.In Queue");
     channel.join().on(
         "*",
         Box::new(|data| {
