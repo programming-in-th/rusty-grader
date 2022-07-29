@@ -1,3 +1,5 @@
+use std::env;
+
 use futures::channel::mpsc::UnboundedSender;
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
@@ -6,7 +8,9 @@ use tokio_postgres::Client;
 
 use crate::constants::PULL_MSG;
 
-pub async fn connect_socket(url: &str, tx: UnboundedSender<String>) {
+pub async fn connect_socket(tx: UnboundedSender<String>) {
+    let url = env::var("SOCKET").unwrap();
+    // let url = url.to_string();
     let mut socket = Socket::new(url);
     socket.connect().await.unwrap();
     let channel = socket.set_channel("realtime:public:Submission:status=eq.In Queue");
@@ -27,7 +31,7 @@ pub async fn connect_socket(url: &str, tx: UnboundedSender<String>) {
     socket.listen().await;
 }
 
-pub async fn connect_db(cert_path: String, db_string: String) -> Client {
+pub async fn connect_db(cert_path: &String, db_string: &String) -> Client {
     let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
     builder.set_ca_file(cert_path).unwrap();
     let connector = MakeTlsConnector::new(builder.build());

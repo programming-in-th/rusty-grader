@@ -8,7 +8,11 @@ use serde_json;
 use tokio_postgres::Client;
 
 pub fn update_status(msg: String, client: &Client, submission_id: &str) {
+    println!("call update");
     block_on(async {
+        println!("in the scope");
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        println!("in the scope2");
         client
             .execute(
                 "UPDATE \"Submission\" SET status = $1 WHERE id = $2",
@@ -16,10 +20,12 @@ pub fn update_status(msg: String, client: &Client, submission_id: &str) {
             )
             .await
             .unwrap();
+        println!("in the scope3");
     });
+    println!("end update");
 }
 
-pub fn judge(
+pub async fn judge(
     task_id: impl Into<String>,
     submission_id: impl Into<String>,
     language: impl Into<String>,
@@ -29,6 +35,14 @@ pub fn judge(
     let task_id = task_id.into();
     let submission_id: String = submission_id.into();
     let language = language.into();
+
+    // client
+    //     .execute(
+    //         "UPDATE \"Submission\" SET status = $1 WHERE id = $2",
+    //         &[&"hello", &submission_id.parse::<i32>().unwrap()],
+    //     )
+    //     .await
+    //     .unwrap();
 
     let callback_sub = submission_id.to_owned();
     let callback_result = submission_id.to_owned();
@@ -86,16 +100,20 @@ pub fn judge(
         submission_id,
         language,
         code,
-        Some(Box::new(|input| match input {
-            SubmissionMessage::Status(status) => {
-                update_status(parse_submission_status(status), client, &callback_sub);
+        Some(Box::new(|input| {
+            println!("{:?}", input);
+            match input {
+                SubmissionMessage::Status(status) => {
+                    update_status(parse_submission_status(status), client, &callback_sub);
+                }
+                SubmissionMessage::GroupResult(result) => {
+                    update_result(result);
+                }
+                _ => {}
             }
-            SubmissionMessage::GroupResult(result) => {
-                update_result(result);
-            }
-            _ => {}
         })),
     )?;
+    println!("REACH COMPILE");
 
     submission.compile()?;
     let _result = submission.run()?;
