@@ -39,8 +39,6 @@ pub fn judge(
     let mut memory = 0;
 
     let mut update_result = move |group: GroupResult| {
-        let data = serde_json::to_value(&result).unwrap();
-
         score += group.score;
         time = std::cmp::max(
             time,
@@ -60,8 +58,10 @@ pub fn judge(
                 .max()
                 .unwrap_or(0) as i32,
         );
-
         result.push(group);
+
+        let data = serde_json::to_value(&result).unwrap();
+
         block_on(async {
             client
                 .execute(
