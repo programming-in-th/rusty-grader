@@ -16,8 +16,8 @@ async fn pull_and_judge(id: String, client: &Client) {
     let lookup_id = String::from(id);
     let rows = client
         .query(
-            "SELECT \"taskId\", language, \
-            code, status  FROM \"Submission\" WHERE id = $1",
+            "SELECT task_id, language, \
+            code, status  FROM submission WHERE id = $1",
             &[&lookup_id.parse::<i32>().unwrap()],
         )
         .await
@@ -44,7 +44,7 @@ async fn pull_and_judge(id: String, client: &Client) {
         let empty_data = serde_json::to_value(&(Vec::new() as Vec<i32>)).unwrap();
         client
             .execute(
-                "UPDATE \"Submission\" SET \
+                "UPDATE submission SET \
                 groups = $1, score = $2, time = $3, \
                 memory = $4, status = $5 WHERE id = $6",
                 &[

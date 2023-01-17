@@ -11,7 +11,7 @@ pub fn update_status(msg: String, client: &Client, submission_id: &str) {
     block_on(async {
         client
             .execute(
-                "UPDATE \"Submission\" SET status = $1 WHERE id = $2",
+                "UPDATE submission SET status = $1 WHERE id = $2",
                 &[&msg, &submission_id.parse::<i32>().unwrap()],
             )
             .await
@@ -65,7 +65,7 @@ pub fn judge(
         block_on(async {
             client
                 .execute(
-                    "UPDATE \"Submission\" SET \
+                    "UPDATE submission SET \
                     groups = $1, score = $2, time = $3, \
                     memory = $4 WHERE id = $5",
                     &[
@@ -104,10 +104,7 @@ pub fn judge(
 
 pub async fn clear_in_queue(client: &Client, tx: UnboundedSender<String>) {
     let rows = client
-        .query(
-            "SELECT id FROM \"Submission\" WHERE status = $1",
-            &[&PULL_MSG],
-        )
+        .query("SELECT id FROM submission WHERE status = $1", &[&PULL_MSG])
         .await
         .unwrap();
 
