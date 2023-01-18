@@ -3,8 +3,10 @@ use crate::instance;
 use crate::instance::{Instance, RunVerdict};
 use crate::submission::result::*;
 use crate::utils::{get_base_path, get_code_extension, get_env, get_message};
+use futures::sink::{Sink, SinkExt};
 use manifest::Manifest;
-use std::{fs, io::Write, path::Path, path::PathBuf, process::Command};
+use std::{io::Write, path::Path, path::PathBuf, process::Command};
+use tokio::fs;
 
 pub mod manifest;
 pub mod result;
@@ -39,18 +41,9 @@ impl Default for SubmissionMessage {
         SubmissionMessage::Status(SubmissionStatus::Initialized)
     }
 }
-pub trait DisplayFnT: FnMut(SubmissionMessage) {}
 
-impl<F> DisplayFnT for F where F: FnMut(SubmissionMessage) {}
-
-impl std::fmt::Debug for dyn DisplayFnT {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "DisplayFunction")
-    }
-}
-pub type DisplayFn<'a> = Box<dyn DisplayFnT + 'a>;
 #[derive(Default)]
-pub struct Submission<'a> {
+pub struct Submission<T> {
     pub task_id: String,
     pub submission_id: String,
     pub language: String,
@@ -59,11 +52,11 @@ pub struct Submission<'a> {
     pub tmp_path: PathBuf,
     pub task_path: PathBuf,
     pub bin_path: PathBuf,
-    pub message_handler: Option<DisplayFn<'a>>,
+    pub message_handler: T,
 }
 
-impl<'a> std::fmt::Display for Submission<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<T> std::fmt::Display for Submission<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "Submission {} {} {} {:?} {:?} {:?} {:?} {:?}",
@@ -79,8 +72,8 @@ impl<'a> std::fmt::Display for Submission<'a> {
     }
 }
 
-impl<'a> std::fmt::Debug for Submission<'a> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<T> std::fmt::Debug for Submission<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
             "Submission {} {} {} {:?} {:?} {:?} {:?} {:?}",
@@ -96,37 +89,38 @@ impl<'a> std::fmt::Debug for Submission<'a> {
     }
 }
 
-impl<'a> Submission<'a> {
-    pub fn from<T>(
-        task_id: T,
-        submission_id: T,
-        language: T,
+impl<T> Submission<T> {
+    pub async fn try_from(
+        task_id: impl ToString,
+        submission_id: impl ToString,
+        language: impl ToString,
         code: &[String],
-        message_handler: Option<DisplayFn<'a>>,
+        mut message_handler: T,
     ) -> GraderResult<Self>
     where
-        T: Into<String>,
+        T: Sink<SubmissionMessage> + std::marker::Unpin,
     {
-        let task_id = task_id.into();
-        let submission_id = submission_id.into();
-        let language = language.into();
+        let task_id = task_id.to_string();
+        let submission_id = submission_id.to_string();
+        let language = language.to_string();
         let tmp_path = PathBuf::from(get_env("TEMPORARY_PATH")).join(&submission_id);
-        fs::remove_dir_all(&tmp_path).ok();
-        fs::create_dir(&tmp_path)?;
+        fs::remove_dir_all(&tmp_path).await.ok();
+        fs::create_dir(&tmp_path).await?;
         let extension = get_code_extension(&language);
         let task_path = get_base_path().join("tasks").join(&task_id);
 
         if task_path.is_dir() == false {
-            if message_handler.is_some() {
-                message_handler.unwrap()(SubmissionMessage::Status(SubmissionStatus::TaskNotFound));
-            }
+            _ = message_handler
+                .send(SubmissionMessage::Status(SubmissionStatus::TaskNotFound))
+                .await;
             return Err(GraderError::task_not_found());
         }
+
         if task_path.join("compile_files").is_dir() {
-            let entries = fs::read_dir(task_path.join("compile_files"))?;
-            for entry in entries {
-                let path = entry?;
-                fs::copy(&path.path(), tmp_path.join(&path.file_name()))?;
+            let mut entries = fs::read_dir(task_path.join("compile_files")).await?;
+            while let Some(entry) = entries.next_entry().await? {
+                let path = entry;
+                fs::copy(&path.path(), tmp_path.join(&path.file_name())).await?;
             }
         }
         Ok(Submission {
@@ -139,7 +133,7 @@ impl<'a> Submission<'a> {
                 .map(|(idx, val)| {
                     let code_path =
                         tmp_path.join(format!("code_{}.{}", &idx.to_string(), &extension));
-                    let mut file = fs::File::create(&code_path)?;
+                    let mut file = std::fs::File::create(&code_path)?;
                     file.write_all(val.as_bytes())?;
 
                     Ok(code_path)
@@ -153,10 +147,15 @@ impl<'a> Submission<'a> {
         })
     }
 
-    pub fn compile(&mut self) -> GraderResult<bool> {
-        if let Some(message_handler) = &mut self.message_handler {
-            message_handler(SubmissionMessage::Status(SubmissionStatus::Compiling))
-        }
+    pub async fn compile(&mut self) -> GraderResult<bool>
+    where
+        T: Sink<SubmissionMessage> + std::marker::Unpin,
+    {
+        _ = self
+            .message_handler
+            .send(SubmissionMessage::Status(SubmissionStatus::Compiling))
+            .await;
+
         let compiler_path = get_base_path()
             .join("scripts")
             .join("compile_scripts")
@@ -192,12 +191,22 @@ impl<'a> Submission<'a> {
             .get(0)
             .map_or(1, |s| s.parse::<i32>().unwrap_or(1));
 
-        if let Some(message_handler) = &mut self.message_handler {
-            match return_code {
-                0 => message_handler(SubmissionMessage::Status(SubmissionStatus::Compiled)),
-                _ => message_handler(SubmissionMessage::Status(
-                    SubmissionStatus::CompilationError(String::from_utf8(compile_output.stdout)?),
-                )),
+        match return_code {
+            0 => {
+                _ = self
+                    .message_handler
+                    .send(SubmissionMessage::Status(SubmissionStatus::Compiled))
+                    .await;
+            }
+            _ => {
+                _ = self
+                    .message_handler
+                    .send(SubmissionMessage::Status(
+                        SubmissionStatus::CompilationError(String::from_utf8(
+                            compile_output.stdout,
+                        )?),
+                    ))
+                    .await;
             }
         }
 
@@ -213,10 +222,19 @@ impl<'a> Submission<'a> {
         }
     }
 
-    fn run_each(&mut self, checker: &Path, runner: &Path, index: u64) -> GraderResult<RunResult> {
-        if let Some(message_handler) = &mut self.message_handler {
-            message_handler(SubmissionMessage::Status(SubmissionStatus::Running(index)))
-        }
+    pub async fn run_each(
+        &mut self,
+        checker: &Path,
+        runner: &Path,
+        index: u64,
+    ) -> GraderResult<RunResult>
+    where
+        T: Sink<SubmissionMessage> + std::marker::Unpin,
+    {
+        _ = self
+            .message_handler
+            .send(SubmissionMessage::Status(SubmissionStatus::Running(index)))
+            .await;
         let input_path = self
             .task_path
             .join("testcases")
@@ -236,8 +254,10 @@ impl<'a> Submission<'a> {
             runner_path: runner.to_path_buf()
         };
 
-        instance.init()?;
-        let instance_result = instance.run()?;
+        // time!("instance init", instance.init().await?;);
+        instance.init().await?;
+        // time!("instance run", let instance_result = instance.run().await?;);
+        let instance_result = instance.run().await?;
 
         let mut run_result = RunResult::from(
             self.submission_id.to_owned(),
@@ -263,6 +283,7 @@ impl<'a> Submission<'a> {
                 run_result.message = checker_output
                     .get(2)
                     .map_or(String::new(), |v| v.to_owned());
+
                 checker_output
                     .get(0)
                     .ok_or(GraderError::invalid_index())?
@@ -280,15 +301,17 @@ impl<'a> Submission<'a> {
             run_result.message = get_message(&run_result.status);
         }
 
-        if let Some(message_handler) = &mut self.message_handler {
-            message_handler(SubmissionMessage::RunResult(run_result.clone()))
-        }
+        _ = self
+            .message_handler
+            .send(SubmissionMessage::RunResult(run_result.clone()))
+            .await;
         Ok(run_result)
     }
 
-    pub fn run(&mut self) -> GraderResult<SubmissionResult> {
-        // if !self.task_manifest.output_only {
-
+    pub async fn run(&mut self) -> GraderResult<SubmissionResult>
+    where
+        T: Sink<SubmissionMessage> + std::marker::Unpin,
+    {
         if self.bin_path == PathBuf::new() {
             return Ok(SubmissionResult {
                 score: 0.0,
@@ -327,7 +350,6 @@ impl<'a> Submission<'a> {
         let mut total_score: f64 = 0.0;
         let mut total_full_score: f64 = 0.0;
         let mut group_results = Vec::new();
-
         for (group_index, (full_score, tests)) in
             self.task_manifest.groups.clone().iter().enumerate()
         {
@@ -345,7 +367,7 @@ impl<'a> Submission<'a> {
                 let run_result = if skip {
                     RunResult::from(self.submission_id.to_owned(), index, 0.0, 0)
                 } else {
-                    self.run_each(&checker, &runner, index)?
+                    self.run_each(&checker, &runner, index).await?
                 };
                 args.push(run_result.score.to_string());
                 skip = &run_result.status != "Correct" && &run_result.status != "Partially Correct";
@@ -360,9 +382,11 @@ impl<'a> Submission<'a> {
 
                 total_score += group_result.score;
             }
-            if let Some(message_handler) = &mut self.message_handler {
-                message_handler(SubmissionMessage::GroupResult(group_result.clone()));
-            }
+            _ = self
+                .message_handler
+                .send(SubmissionMessage::GroupResult(group_result.clone()))
+                .await;
+
             group_results.push(group_result);
 
             last_test += tests;
@@ -374,17 +398,18 @@ impl<'a> Submission<'a> {
             submission_id: self.submission_id.to_owned(),
             group_result: group_results,
         };
-        if let Some(message_handler) = &mut self.message_handler {
-            message_handler(SubmissionMessage::Status(SubmissionStatus::Done(
+        _ = self
+            .message_handler
+            .send(SubmissionMessage::Status(SubmissionStatus::Done(
                 submission_result.clone(),
-            )));
-        }
+            )))
+            .await;
         Ok(submission_result)
     }
 }
 
-impl<'a> Drop for Submission<'a> {
+impl<T> Drop for Submission<T> {
     fn drop(&mut self) {
-        fs::remove_dir_all(&self.tmp_path).ok();
+        std::fs::remove_dir_all(&self.tmp_path).ok();
     }
 }

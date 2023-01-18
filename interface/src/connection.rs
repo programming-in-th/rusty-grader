@@ -2,10 +2,11 @@ use futures::channel::mpsc::UnboundedSender;
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::MakeTlsConnector;
 use realtime_rs::connection::Socket;
-use tokio_postgres::Client;
+use tokio_postgres::{Client};
 
 use crate::constants::PULL_MSG;
 
+#[allow(dead_code)]
 pub async fn connect_socket(url: &str, tx: UnboundedSender<String>) {
     let mut socket = Socket::new(url);
     socket.connect().await.unwrap();
@@ -27,12 +28,15 @@ pub async fn connect_socket(url: &str, tx: UnboundedSender<String>) {
     socket.listen().await;
 }
 
-pub async fn connect_db(cert_path: String, db_string: String) -> Client {
-    let mut builder = SslConnector::builder(SslMethod::tls()).unwrap();
-    builder.set_ca_file(cert_path).unwrap();
-    let connector = MakeTlsConnector::new(builder.build());
+pub async fn connect_db(db_string: &str) -> Client {
+    let builder = SslConnector::builder(SslMethod::tls()).unwrap();
+    let mut connector = MakeTlsConnector::new(builder.build());
+    connector.set_callback(|config, _| {
+        config.set_verify_hostname(false);
+        Ok(())
+    });
 
-    let (client, connection) = tokio_postgres::connect(&db_string, connector)
+    let (client, connection) = tokio_postgres::connect(db_string, connector)
         .await
         .unwrap();
 

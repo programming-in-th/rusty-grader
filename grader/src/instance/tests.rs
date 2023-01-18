@@ -2,11 +2,12 @@ use super::*;
 use crate::errors::{GraderError, GraderResult};
 use crate::instance;
 use crate::utils::tests::{compile_cpp, get_example_dir, get_tmp_path, TempDir};
+use tokio::test;
 
 use dotenv::dotenv;
 
 #[test]
-fn should_complete_initialize_instance() -> GraderResult<()> {
+async fn should_complete_initialize_instance() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -23,12 +24,12 @@ fn should_complete_initialize_instance() -> GraderResult<()> {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init()?;
+    instance.init().await?;
     Ok(())
 }
 
 #[test]
-fn should_error_if_input_path_is_wrong() -> GraderResult<()> {
+async fn should_error_if_input_path_is_wrong() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -44,7 +45,7 @@ fn should_error_if_input_path_is_wrong() -> GraderResult<()> {
         runner_path: base_dir.join("run_cpp")
     };
 
-    let _init_result = instance.init();
+    let _init_result = instance.init().await;
     assert_eq!(
         _init_result,
         Err(GraderError::InvalidIo {
@@ -56,7 +57,7 @@ fn should_error_if_input_path_is_wrong() -> GraderResult<()> {
 }
 
 #[test]
-fn should_error_if_output_path_is_wrong() -> GraderResult<()> {
+async fn should_error_if_output_path_is_wrong() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -72,7 +73,7 @@ fn should_error_if_output_path_is_wrong() -> GraderResult<()> {
         runner_path: base_dir.join("run_cpp")
     };
 
-    let _init_result = instance.init();
+    let _init_result = instance.init().await;
     assert_eq!(
         _init_result,
         Err(GraderError::InvalidIo {
@@ -84,7 +85,7 @@ fn should_error_if_output_path_is_wrong() -> GraderResult<()> {
 }
 
 #[test]
-fn should_error_if_runner_path_is_wrong() -> GraderResult<()> {
+async fn should_error_if_runner_path_is_wrong() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -100,7 +101,7 @@ fn should_error_if_runner_path_is_wrong() -> GraderResult<()> {
         runner_path: base_dir.join("run_cpp_wrong_path")
     };
 
-    let _init_result = instance.init();
+    let _init_result = instance.init().await;
     assert_eq!(
         _init_result,
         Err(GraderError::InvalidIo {
@@ -112,19 +113,19 @@ fn should_error_if_runner_path_is_wrong() -> GraderResult<()> {
 }
 
 #[test]
-fn should_read_log_correctly_when_ok() -> GraderResult<()> {
+async fn should_read_log_correctly_when_ok() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_ok.txt");
     let tmp_log = get_tmp_path().join("test_log_ok.txt");
-    fs::copy(&test_log, &tmp_log).unwrap();
+    fs::copy(&test_log, &tmp_log).await.unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
         memory_limit: 4000
     };
 
-    let result = instance.get_result()?;
+    let result = instance.get_result().await?;
 
     assert_eq!(
         result,
@@ -138,19 +139,19 @@ fn should_read_log_correctly_when_ok() -> GraderResult<()> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_re() -> GraderResult<()> {
+async fn should_trigger_when_read_log_with_re() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_re.txt");
     let tmp_log = get_tmp_path().join("test_log_re.txt");
-    fs::copy(&test_log, &tmp_log).unwrap();
+    fs::copy(&test_log, &tmp_log).await.unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
         memory_limit: 4000
     };
 
-    let result = instance.get_result()?;
+    let result = instance.get_result().await?;
 
     assert_eq!(
         result,
@@ -164,19 +165,19 @@ fn should_trigger_when_read_log_with_re() -> GraderResult<()> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_to() -> GraderResult<()> {
+async fn should_trigger_when_read_log_with_to() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_to.txt");
     let tmp_log = get_tmp_path().join("test_log_to.txt");
-    fs::copy(&test_log, &tmp_log).unwrap();
+    fs::copy(&test_log, &tmp_log).await.unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
         memory_limit: 4000
     };
 
-    let result = instance.get_result()?;
+    let result = instance.get_result().await?;
 
     assert_eq!(
         result,
@@ -190,19 +191,19 @@ fn should_trigger_when_read_log_with_to() -> GraderResult<()> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_sg() -> GraderResult<()> {
+async fn should_trigger_when_read_log_with_sg() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_sg.txt");
     let tmp_log = get_tmp_path().join("test_log_sg.txt");
-    fs::copy(&test_log, &tmp_log).unwrap();
+    fs::copy(&test_log, &tmp_log).await.unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
         memory_limit: 4000
     };
 
-    let result = instance.get_result()?;
+    let result = instance.get_result().await?;
 
     assert_eq!(
         result,
@@ -216,19 +217,19 @@ fn should_trigger_when_read_log_with_sg() -> GraderResult<()> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_xx() -> GraderResult<()> {
+async fn should_trigger_when_read_log_with_xx() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_xx.txt");
     let tmp_log = get_tmp_path().join("test_log_xx.txt");
-    fs::copy(&test_log, &tmp_log).unwrap();
+    fs::copy(&test_log, &tmp_log).await.unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
         memory_limit: 4000
     };
 
-    let result = instance.get_result()?;
+    let result = instance.get_result().await?;
 
     assert_eq!(
         result,
@@ -241,19 +242,19 @@ fn should_trigger_when_read_log_with_xx() -> GraderResult<()> {
 }
 
 #[test]
-fn should_trigger_when_read_log_with_mle() -> GraderResult<()> {
+async fn should_trigger_when_read_log_with_mle() -> GraderResult<()> {
     dotenv().ok();
 
     let test_log = get_example_dir().join("etc").join("log_mle.txt");
     let tmp_log = get_tmp_path().join("test_log_mle.txt");
-    fs::copy(&test_log, &tmp_log).unwrap();
+    fs::copy(&test_log, &tmp_log).await.unwrap();
 
     let instance = instance! {
         log_file: tmp_log,
         memory_limit: 1000
     };
 
-    let result = instance.get_result()?;
+    let result = instance.get_result().await?;
 
     assert_eq!(
         result,
@@ -267,7 +268,7 @@ fn should_trigger_when_read_log_with_mle() -> GraderResult<()> {
 }
 
 #[test]
-fn should_get_ok() -> GraderResult<()> {
+async fn should_get_ok() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -283,15 +284,15 @@ fn should_get_ok() -> GraderResult<()> {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init()?;
-    let result = instance.run()?;
+    instance.init().await?;
+    let result = instance.run().await?;
 
     assert_eq!(result.status, RunVerdict::VerdictOK);
     Ok(())
 }
 
 #[test]
-fn should_get_tle() -> GraderResult<()> {
+async fn should_get_tle() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -307,15 +308,15 @@ fn should_get_tle() -> GraderResult<()> {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init()?;
-    let result = instance.run()?;
+    instance.init().await?;
+    let result = instance.run().await?;
 
     assert_eq!(result.status, RunVerdict::VerdictTLE);
     Ok(())
 }
 
 #[test]
-fn should_get_re() -> GraderResult<()> {
+async fn should_get_re() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -331,15 +332,15 @@ fn should_get_re() -> GraderResult<()> {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init()?;
-    let result = instance.run()?;
+    instance.init().await?;
+    let result = instance.run().await?;
 
     assert_eq!(result.status, RunVerdict::VerdictRE);
     Ok(())
 }
 
 #[test]
-fn should_get_mle() -> GraderResult<()> {
+async fn should_get_mle() -> GraderResult<()> {
     dotenv().ok();
 
     let base_dir = get_example_dir().join("etc");
@@ -355,8 +356,8 @@ fn should_get_mle() -> GraderResult<()> {
         runner_path: get_example_dir().join("scripts").join("runner_scripts").join("cpp")
     };
 
-    instance.init()?;
-    let result = instance.run()?;
+    instance.init().await?;
+    let result = instance.run().await?;
 
     assert_eq!(result.status, RunVerdict::VerdictMLE);
     Ok(())

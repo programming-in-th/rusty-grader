@@ -1,9 +1,9 @@
 use brotli;
 use dotenv::dotenv;
 use futures::StreamExt;
-use futures_util::{future, pin_mut};
 use serde_json::Value;
 use std::io::Cursor;
+use std::sync::Arc;
 use tokio_postgres::Client;
 
 use std::env;
@@ -12,8 +12,9 @@ mod connection;
 mod constants;
 mod runner;
 
-async fn pull_and_judge(id: String, client: &Client) {
+async fn pull_and_judge(id: String, client: Arc<Client>) {
     let lookup_id = String::from(id);
+
     let rows = client
         .query(
             "SELECT task_id, language, \
@@ -58,9 +59,15 @@ async fn pull_and_judge(id: String, client: &Client) {
             )
             .await
             .unwrap();
-        let result = runner::judge(task_id, lookup_id.clone(), language, &code, &client);
+
+        let result = runner::judge(task_id, &lookup_id, language, &code, Arc::clone(&client)).await;
         if result.is_err() {
-            runner::update_status(constants::ERROR_MSG.to_string(), &client, &lookup_id);
+            runner::update_status(
+                Arc::clone(&client),
+                &lookup_id,
+                constants::ERROR_MSG.to_string(),
+            )
+            .await;
         }
     }
 }
@@ -69,26 +76,22 @@ async fn pull_and_judge(id: String, client: &Client) {
 async fn main() {
     dotenv().ok();
 
-    let cert_path = env::var("CERTIFICATE").unwrap();
-    let url = env::var("SOCKET").unwrap();
     let db_string = env::var("DB_STRING").unwrap();
 
-    let client = connection::connect_db(cert_path, db_string).await;
+    let client = Arc::new(connection::connect_db(&db_string).await);
 
-    loop {
-        let (tx, rx) = futures::channel::mpsc::unbounded::<String>();
+    let (tx, mut rx) = futures::channel::mpsc::unbounded::<String>();
 
-        runner::clear_in_queue(&client, tx.clone()).await;
+    runner::clear_in_queue(Arc::clone(&client), tx.clone()).await;
 
-        let socket_listen = connection::connect_socket(&url, tx.clone());
+    let handle = async {
+        while let Some(id) = rx.next().await {
+            let client = Arc::new(connection::connect_db(&db_string).await);
+            tokio::spawn(async {
+                pull_and_judge(id, client).await;
+            });
+        }
+    };
 
-        let stream = {
-            rx.for_each(|id| async {
-                pull_and_judge(id, &client).await;
-            })
-        };
-
-        pin_mut!(socket_listen, stream);
-        future::select(socket_listen, stream).await;
-    }
+    handle.await;
 }
