@@ -1,13 +1,17 @@
 use crate::{
     constants::{parse_submission_status, PULL_MSG},
+    error::Error,
     SubmissionId,
 };
-use futures::Sink;
 use futures::TryStreamExt;
 use futures::{channel::mpsc::UnboundedSender, StreamExt};
+use futures::{Sink, Stream};
 use grader::{
     errors::GraderResult,
-    submission::{result::GroupResult, Submission, SubmissionMessage, SubmissionStatus},
+    submission::{
+        result::{GroupResult, SubmissionResult},
+        Submission, SubmissionMessage, SubmissionStatus,
+    },
 };
 use postgres_openssl::TlsStream;
 use serde_json;
@@ -23,14 +27,19 @@ pub struct JudgeState {
     memory: i32,
 }
 
-pub async fn update_status(client: SharedClient, submission_id: &str, msg: String) {
+pub async fn update_status(
+    client: SharedClient,
+    submission_id: &str,
+    msg: String,
+) -> Result<(), Error> {
     client
         .execute(
             "UPDATE submission SET status = $1 WHERE id = $2",
             &[&msg, &submission_id.parse::<i32>().unwrap()],
         )
-        .await
-        .unwrap();
+        .await?;
+
+    Ok(())
 }
 
 pub async fn update_result(
@@ -38,7 +47,7 @@ pub async fn update_result(
     submission_id: &str,
     state: &Mutex<JudgeState>,
     group: GroupResult,
-) {
+) -> Result<(), Error> {
     let new_score = group.score;
     let new_time = group
         .run_result
@@ -80,8 +89,9 @@ pub async fn update_result(
                 &submission_id.parse::<i32>().unwrap(),
             ],
         )
-        .await
-        .unwrap();
+        .await?;
+
+    Ok(())
 }
 
 pub async fn judge(
@@ -90,12 +100,10 @@ pub async fn judge(
     language: impl ToString,
     code: &[String],
     client: SharedClient,
-) -> GraderResult<()> {
+) -> GraderResult<SubmissionResult> {
     let task_id = task_id.to_string();
     let submission_id = submission_id.to_string();
     let language = language.to_string();
-
-    let callback_result = submission_id.to_owned();
 
     let result = vec![];
     let score = 0.0;
@@ -109,45 +117,22 @@ pub async fn judge(
         memory,
     });
 
-    let (tx, mut rx) = futures::channel::mpsc::unbounded::<SubmissionMessage>();
+    let (tx, rx) = futures::channel::mpsc::unbounded::<SubmissionMessage>();
 
     let mut submission =
         Submission::try_from(task_id, submission_id.clone(), language, code, tx).await?;
 
-    tokio::spawn(async move {
-        let client = client.clone();
-
-        while let Some(message) = rx.next().await {
-            match message {
-                SubmissionMessage::Status(status @ SubmissionStatus::Done(..)) => {
-                    update_status(
-                        client.clone(),
-                        &callback_result,
-                        parse_submission_status(status),
-                    )
-                    .await;
-                    break;
-                }
-                SubmissionMessage::Status(status) => {
-                    update_status(
-                        client.clone(),
-                        &callback_result,
-                        parse_submission_status(status),
-                    )
-                    .await;
-                }
-                SubmissionMessage::GroupResult(group_result) => {
-                    update_result(client.clone(), &callback_result, &state, group_result).await;
-                }
-                _ => {}
-            }
-        }
-    });
+    tokio::spawn(handle_update_message(
+        client.clone(),
+        rx,
+        submission_id.clone(),
+        state,
+    ));
 
     submission.compile().await?;
-    let _result = submission.run().await?;
+    let result = submission.run().await?;
 
-    Ok(())
+    Ok(result)
 }
 
 pub async fn clear_in_queue(client: SharedClient, tx: UnboundedSender<String>) {
@@ -187,5 +172,59 @@ pub async fn listen_new_submission<U>(
 
     client.batch_execute("LISTEN submit;").await.unwrap();
 
-    _ = handle.await.unwrap();
+    match handle.await {
+        Err(e) => {
+            if e.is_cancelled() {
+                eprintln!("Listen new submission got cancelled");
+            } else if e.is_panic() {
+                eprintln!("Listen new submisison panic");
+            }
+        }
+        Ok(_) => {}
+    }
+}
+
+async fn handle_update_message<T>(
+    client: SharedClient,
+    mut rx: T,
+    submission_id: String,
+    state: Mutex<JudgeState>,
+) where
+    T: Stream<Item = SubmissionMessage> + std::marker::Unpin,
+{
+    while let Some(message) = rx.next().await {
+        match message {
+            SubmissionMessage::Status(status @ SubmissionStatus::Done(..)) => {
+                if let Err(e) = update_status(
+                    client.clone(),
+                    &submission_id,
+                    parse_submission_status(status),
+                )
+                .await
+                {
+                    eprintln!("unable to update status to database: {e}");
+                }
+                break;
+            }
+            SubmissionMessage::Status(status) => {
+                if let Err(e) = update_status(
+                    client.clone(),
+                    &submission_id,
+                    parse_submission_status(status),
+                )
+                .await
+                {
+                    eprintln!("unable to update status to database: {e}");
+                }
+            }
+            SubmissionMessage::GroupResult(group_result) => {
+                if let Err(e) =
+                    update_result(client.clone(), &submission_id, &state, group_result).await
+                {
+                    eprintln!("ubable to update status to database: {e}");
+                }
+            }
+            _ => {}
+        }
+    }
 }
