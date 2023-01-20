@@ -1,34 +1,27 @@
-use futures::channel::mpsc::UnboundedSender;
+use std::sync::Arc;
+
 use openssl::ssl::{SslConnector, SslMethod};
-use postgres_openssl::MakeTlsConnector;
-use realtime_rs::connection::Socket;
-use tokio_postgres::{Client};
+use postgres_openssl::{MakeTlsConnector, TlsStream};
+use tokio_postgres::{Client, Connection, Socket};
 
-use crate::constants::PULL_MSG;
+#[derive(Clone)]
+pub struct SharedClient(Arc<Client>);
 
-#[allow(dead_code)]
-pub async fn connect_socket(url: &str, tx: UnboundedSender<String>) {
-    let mut socket = Socket::new(url);
-    socket.connect().await.unwrap();
-    let channel = socket.set_channel("realtime:public:Submission:status=eq.In Queue");
-    channel.join().on(
-        "*",
-        Box::new(|data| {
-            if data.contains_key("record") {
-                let table = data["record"].as_object().unwrap();
-                let status = table["status"].as_str().unwrap();
-                if status == PULL_MSG {
-                    let id = table["id"].as_str().unwrap();
-                    tx.unbounded_send(id.to_string()).unwrap();
-                }
-            }
-        }),
-    );
+impl std::ops::Deref for SharedClient {
+    type Target = Arc<Client>;
 
-    socket.listen().await;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
 }
 
-pub async fn connect_db(db_string: &str) -> Client {
+impl From<Client> for SharedClient {
+    fn from(value: Client) -> Self {
+        Self(Arc::new(value))
+    }
+}
+
+pub async fn connect_db(db_string: &str) -> (SharedClient, Connection<Socket, TlsStream<Socket>>) {
     let builder = SslConnector::builder(SslMethod::tls()).unwrap();
     let mut connector = MakeTlsConnector::new(builder.build());
     connector.set_callback(|config, _| {
@@ -36,14 +29,7 @@ pub async fn connect_db(db_string: &str) -> Client {
         Ok(())
     });
 
-    let (client, connection) = tokio_postgres::connect(db_string, connector)
-        .await
-        .unwrap();
+    let (client, connection) = tokio_postgres::connect(db_string, connector).await.unwrap();
 
-    tokio::spawn(async move {
-        if let Err(e) = connection.await {
-            eprintln!("connection error: {}", e);
-        }
-    });
-    client
+    (client.into(), connection)
 }

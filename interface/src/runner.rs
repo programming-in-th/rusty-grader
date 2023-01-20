@@ -1,14 +1,20 @@
-use crate::constants::{parse_submission_status, PULL_MSG};
+use crate::{
+    constants::{parse_submission_status, PULL_MSG},
+    SubmissionId,
+};
+use futures::Sink;
+use futures::TryStreamExt;
 use futures::{channel::mpsc::UnboundedSender, StreamExt};
 use grader::{
     errors::GraderResult,
     submission::{result::GroupResult, Submission, SubmissionMessage, SubmissionStatus},
 };
+use postgres_openssl::TlsStream;
 use serde_json;
 use tokio::sync::Mutex;
-use tokio_postgres::Client;
+use tokio_postgres::{Connection, Socket};
 
-use std::sync::Arc;
+use super::SharedClient;
 
 pub struct JudgeState {
     result: Vec<GroupResult>,
@@ -17,7 +23,7 @@ pub struct JudgeState {
     memory: i32,
 }
 
-pub async fn update_status(client: Arc<Client>, submission_id: &str, msg: String) {
+pub async fn update_status(client: SharedClient, submission_id: &str, msg: String) {
     client
         .execute(
             "UPDATE submission SET status = $1 WHERE id = $2",
@@ -28,7 +34,7 @@ pub async fn update_status(client: Arc<Client>, submission_id: &str, msg: String
 }
 
 pub async fn update_result(
-    client: Arc<Client>,
+    client: SharedClient,
     submission_id: &str,
     state: &Mutex<JudgeState>,
     group: GroupResult,
@@ -83,7 +89,7 @@ pub async fn judge(
     submission_id: impl ToString,
     language: impl ToString,
     code: &[String],
-    client: Arc<Client>,
+    client: SharedClient,
 ) -> GraderResult<()> {
     let task_id = task_id.to_string();
     let submission_id = submission_id.to_string();
@@ -109,13 +115,13 @@ pub async fn judge(
         Submission::try_from(task_id, submission_id.clone(), language, code, tx).await?;
 
     tokio::spawn(async move {
-        let client = Arc::clone(&client);
+        let client = client.clone();
 
         while let Some(message) = rx.next().await {
             match message {
                 SubmissionMessage::Status(status @ SubmissionStatus::Done(..)) => {
                     update_status(
-                        Arc::clone(&client),
+                        client.clone(),
                         &callback_result,
                         parse_submission_status(status),
                     )
@@ -124,15 +130,14 @@ pub async fn judge(
                 }
                 SubmissionMessage::Status(status) => {
                     update_status(
-                        Arc::clone(&client),
+                        client.clone(),
                         &callback_result,
                         parse_submission_status(status),
                     )
                     .await;
                 }
                 SubmissionMessage::GroupResult(group_result) => {
-                    update_result(Arc::clone(&client), &callback_result, &state, group_result)
-                        .await;
+                    update_result(client.clone(), &callback_result, &state, group_result).await;
                 }
                 _ => {}
             }
@@ -145,7 +150,7 @@ pub async fn judge(
     Ok(())
 }
 
-pub async fn clear_in_queue(client: Arc<Client>, tx: UnboundedSender<String>) {
+pub async fn clear_in_queue(client: SharedClient, tx: UnboundedSender<String>) {
     let rows = client
         .query("SELECT id FROM submission WHERE status = $1", &[&PULL_MSG])
         .await
@@ -156,4 +161,31 @@ pub async fn clear_in_queue(client: Arc<Client>, tx: UnboundedSender<String>) {
         let id = id.to_string();
         tx.unbounded_send(id).unwrap();
     }
+}
+
+pub async fn listen_new_submission<U>(
+    client: SharedClient,
+    mut connection: Connection<Socket, TlsStream<Socket>>,
+    writer: U,
+) where
+    U: Sink<SubmissionId> + Sync + Send + 'static,
+    <U as Sink<SubmissionId>>::Error: std::fmt::Debug + Send + Sync + 'static,
+{
+    let stream =
+        futures::stream::poll_fn(move |cx| connection.poll_message(cx)).map_err(|x| panic!("{x}"));
+
+    let stream = stream.and_then(|msg| async {
+        match msg {
+            tokio_postgres::AsyncMessage::Notification(msg) => Ok(msg.payload().to_string()),
+            _ => panic!(),
+        }
+    });
+
+    let stream = stream.forward(writer);
+
+    let handle = tokio::spawn(stream);
+
+    client.batch_execute("LISTEN submit;").await.unwrap();
+
+    _ = handle.await.unwrap();
 }

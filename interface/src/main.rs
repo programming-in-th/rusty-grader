@@ -1,10 +1,9 @@
 use brotli;
 use dotenv::dotenv;
-use futures::StreamExt;
+use futures::{Sink, Stream, StreamExt};
 use serde_json::Value;
 use std::io::Cursor;
-use std::sync::Arc;
-use tokio_postgres::Client;
+use tokio::task::JoinHandle;
 
 use std::env;
 
@@ -12,7 +11,11 @@ mod connection;
 mod constants;
 mod runner;
 
-async fn pull_and_judge(id: String, client: Arc<Client>) {
+use connection::SharedClient;
+
+type SubmissionId = String;
+
+async fn pull_and_judge(id: String, client: SharedClient) {
     let lookup_id = String::from(id);
 
     let rows = client
@@ -60,14 +63,10 @@ async fn pull_and_judge(id: String, client: Arc<Client>) {
             .await
             .unwrap();
 
-        let result = runner::judge(task_id, &lookup_id, language, &code, Arc::clone(&client)).await;
+        let result = runner::judge(task_id, &lookup_id, language, &code, client.clone()).await;
         if result.is_err() {
-            runner::update_status(
-                Arc::clone(&client),
-                &lookup_id,
-                constants::ERROR_MSG.to_string(),
-            )
-            .await;
+            runner::update_status(client.clone(), &lookup_id, constants::ERROR_MSG.to_string())
+                .await;
         }
     }
 }
@@ -78,20 +77,46 @@ async fn main() {
 
     let db_string = env::var("DB_STRING").unwrap();
 
-    let client = Arc::new(connection::connect_db(&db_string).await);
+    loop {
+        let (tx, rx) = futures::channel::mpsc::unbounded::<SubmissionId>();
 
-    let (tx, mut rx) = futures::channel::mpsc::unbounded::<String>();
+        let (client, connection) = connection::connect_db(&db_string).await;
+        tokio::spawn(async move {
+            if let Err(e) = connection.await {
+                eprintln!("connection error: {}", e);
+            }
+        });
+        runner::clear_in_queue(client.clone(), tx.clone()).await;
 
-    runner::clear_in_queue(Arc::clone(&client), tx.clone()).await;
+        let db_notification_handler = handle_db_message(&db_string, tx.clone());
 
-    let handle = async {
-        while let Some(id) = rx.next().await {
-            let client = Arc::new(connection::connect_db(&db_string).await);
-            tokio::spawn(async {
-                pull_and_judge(id, client).await;
-            });
-        }
-    };
+        let submission_handler = handle_message(client.clone(), rx);
 
-    handle.await;
+        tokio::select! {
+            _ = submission_handler => {},
+            _ = db_notification_handler => {},
+        };
+    }
+}
+
+async fn handle_message<T>(client: SharedClient, mut reader: T)
+where
+    T: Stream<Item = SubmissionId> + std::marker::Unpin,
+{
+    while let Some(id) = reader.next().await {
+        let client = client.clone();
+        tokio::spawn(async {
+            pull_and_judge(id, client).await;
+        });
+    }
+}
+
+async fn handle_db_message<T>(db_string: impl ToString, tx: T) -> JoinHandle<()>
+where
+    T: Sink<SubmissionId> + Send + Sync + 'static,
+    <T as Sink<SubmissionId>>::Error: std::fmt::Debug + Send + Sync + 'static,
+{
+    let (listen_client, listen_connection) = connection::connect_db(&db_string.to_string()).await;
+    let listen = runner::listen_new_submission(listen_client, listen_connection, tx);
+    tokio::spawn(listen)
 }
