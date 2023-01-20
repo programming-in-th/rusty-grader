@@ -20,6 +20,8 @@ use tokio_postgres::{Connection, Socket};
 
 use super::SharedClient;
 
+use log::{debug, error, warn};
+
 pub struct JudgeState {
     result: Vec<GroupResult>,
     score: f64,
@@ -32,6 +34,7 @@ pub async fn update_status(
     submission_id: &str,
     msg: String,
 ) -> Result<(), Error> {
+    debug!("change {submission_id}'s status to {msg}");
     client
         .execute(
             "UPDATE submission SET status = $1 WHERE id = $2",
@@ -48,6 +51,7 @@ pub async fn update_result(
     state: &Mutex<JudgeState>,
     group: GroupResult,
 ) -> Result<(), Error> {
+    debug!("received new group result for {submission_id}");
     let new_score = group.score;
     let new_time = group
         .run_result
@@ -76,6 +80,7 @@ pub async fn update_result(
     let data = serde_json::to_value(&lock.result).unwrap();
     drop(lock);
 
+    debug!("update {submission_id} to (score: {score}, time: {time}, memory: {memory})");
     client
         .execute(
             "UPDATE submission SET \
@@ -129,13 +134,15 @@ pub async fn judge(
         state,
     ));
 
+    debug!("compiling {submission_id}");
     submission.compile().await?;
+    debug!("running {submission_id}");
     let result = submission.run().await?;
 
     Ok(result)
 }
 
-pub async fn clear_in_queue(client: SharedClient, tx: UnboundedSender<String>) {
+pub async fn clear_in_queue(client: SharedClient, tx: UnboundedSender<SubmissionId>) {
     let rows = client
         .query("SELECT id FROM submission WHERE status = $1", &[&PULL_MSG])
         .await
@@ -156,6 +163,7 @@ pub async fn listen_new_submission<U>(
     U: Sink<SubmissionId> + Sync + Send + 'static,
     <U as Sink<SubmissionId>>::Error: std::fmt::Debug + Send + Sync + 'static,
 {
+    debug!("start listen_new_submission");
     let stream =
         futures::stream::poll_fn(move |cx| connection.poll_message(cx)).map_err(|x| panic!("{x}"));
 
@@ -170,14 +178,20 @@ pub async fn listen_new_submission<U>(
 
     let handle = tokio::spawn(stream);
 
-    client.batch_execute("LISTEN submit;").await.unwrap();
+    match client.batch_execute("LISTEN submit;").await {
+        Ok(_) => {}
+        Err(_) => {
+            error!("Unable to listen to database");
+            panic!("Unable to listen to database");
+        }
+    }
 
     match handle.await {
         Err(e) => {
             if e.is_cancelled() {
-                eprintln!("Listen new submission got cancelled");
+                warn!("Listen new submission got cancelled");
             } else if e.is_panic() {
-                eprintln!("Listen new submisison panic");
+                warn!("Listen new submisison panic");
             }
         }
         Ok(_) => {}
@@ -187,11 +201,12 @@ pub async fn listen_new_submission<U>(
 async fn handle_update_message<T>(
     client: SharedClient,
     mut rx: T,
-    submission_id: String,
+    submission_id: SubmissionId,
     state: Mutex<JudgeState>,
 ) where
     T: Stream<Item = SubmissionMessage> + std::marker::Unpin,
 {
+    debug!("start handle_update_message for {submission_id}");
     while let Some(message) = rx.next().await {
         match message {
             SubmissionMessage::Status(status @ SubmissionStatus::Done(..)) => {
@@ -202,7 +217,7 @@ async fn handle_update_message<T>(
                 )
                 .await
                 {
-                    eprintln!("unable to update status to database: {e}");
+                    warn!("unable to update status to database: {e}");
                 }
                 break;
             }
@@ -214,14 +229,14 @@ async fn handle_update_message<T>(
                 )
                 .await
                 {
-                    eprintln!("unable to update status to database: {e}");
+                    warn!("unable to update status to database: {e}");
                 }
             }
             SubmissionMessage::GroupResult(group_result) => {
                 if let Err(e) =
                     update_result(client.clone(), &submission_id, &state, group_result).await
                 {
-                    eprintln!("ubable to update status to database: {e}");
+                    warn!("ubable to update status to database: {e}");
                 }
             }
             _ => {}

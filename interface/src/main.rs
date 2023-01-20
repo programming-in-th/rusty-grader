@@ -1,6 +1,7 @@
 use brotli;
 use dotenv::dotenv;
 use futures::{Sink, Stream, StreamExt};
+use log::{debug, error, info, warn};
 use serde_json::Value;
 use std::io::Cursor;
 use tokio::task::JoinHandle;
@@ -17,7 +18,9 @@ use error::Error;
 
 type SubmissionId = String;
 
-async fn pull_and_judge(id: String, client: SharedClient) -> Result<(), Error> {
+async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Error> {
+    debug!("start judging {id}");
+
     let lookup_id = String::from(id);
 
     let lookup_id_as_query_args = match lookup_id.parse::<i32>() {
@@ -75,15 +78,16 @@ async fn pull_and_judge(id: String, client: SharedClient) -> Result<(), Error> {
         )
         .await?;
 
+    debug!("start judging submission {lookup_id}");
     let result = runner::judge(task_id, &lookup_id, language, &code, client.clone()).await;
     match result {
         Ok(_) => Ok(()),
         Err(e) => {
-            if let Err(e) =
+            if let Err(_) =
                 runner::update_status(client.clone(), &lookup_id, constants::ERROR_MSG.to_string())
                     .await
             {
-                eprintln!("failed to update status to server: {e}");
+                warn!("failed to update status to server");
             }
             Err(Error::GraderError(e))
         }
@@ -94,33 +98,35 @@ async fn pull_and_judge(id: String, client: SharedClient) -> Result<(), Error> {
 async fn main() {
     dotenv().ok();
 
+    pretty_env_logger::init();
+
     let db_string = env::var("DB_STRING").unwrap();
 
-    loop {
-        println!("starting interface.");
+    info!("starting...");
 
+    loop {
         let (tx, rx) = futures::channel::mpsc::unbounded::<SubmissionId>();
 
         let (client, connection) = connection::connect_db(&db_string).await;
         tokio::spawn(async move {
             if let Err(e) = connection.await {
-                eprintln!("connection error: {}", e);
+                error!("connection error: {}", e);
             }
         });
         runner::clear_in_queue(client.clone(), tx.clone()).await;
 
         let db_notification_handler = handle_db_notification(&db_string, tx.clone()).await;
-        println!("Start listening for database notification");
+        info!("start listening for database notification");
 
         let submission_handler = handle_message(client.clone(), rx);
-        println!("Start listening for submission through channel");
+        info!("start listening for submission through channel");
 
         tokio::select! {
             _ = submission_handler => {
-                eprintln!("submission handler died");
+                warn!("submission handler died, restarting...");
             },
             _ = db_notification_handler => {
-                eprintln!("db notification handler died");
+                warn!("db notification handler died, restarting...");
             },
         };
     }
@@ -132,9 +138,9 @@ where
 {
     while let Some(id) = reader.next().await {
         let client = client.clone();
-        tokio::spawn(async {
-            match pull_and_judge(id, client).await {
-                Err(e) => eprintln!("{e:?}"),
+        tokio::spawn(async move {
+            match pull_and_judge(id.clone(), client).await {
+                Err(e) => warn!("failed to judge submission '{id}'\nreason: {e:?}"),
                 _ => {}
             }
         });
