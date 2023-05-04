@@ -22,6 +22,8 @@ use super::SharedClient;
 
 use log::{debug, error, warn, info};
 
+const EPS: f64 = 1e-6;
+
 pub struct JudgeState {
     result: Vec<GroupResult>,
     score: f64,
@@ -73,7 +75,7 @@ pub async fn update_result(
     lock.memory = std::cmp::max(lock.memory, new_memory);
     lock.result.push(group);
 
-    let score = lock.score;
+    let score = lock.score + EPS;
     let time = lock.time;
     let memory = lock.memory;
 
