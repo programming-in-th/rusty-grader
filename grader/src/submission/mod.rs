@@ -271,9 +271,9 @@ impl<T> Submission<T> {
         run_result.status = match instance_result.status {
             RunVerdict::VerdictOK => {
                 let args = vec![&input_path, &output_path, &sol_path];
-                log::warn!("{input_path:?}, {output_path:?}, {sol_path:?}");
+                log::debug!("{input_path:?}, {output_path:?}, {sol_path:?}");
                 let checker_result = Command::new(&checker).args(args).output()?;
-                log::warn!("{checker_result:?}");
+                log::debug!("{checker_result:?}\n");
                 let checker_output = String::from_utf8(checker_result.stdout)?
                     .trim_end_matches('\n')
                     .lines()

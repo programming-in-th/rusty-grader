@@ -140,7 +140,7 @@ pub async fn judge(
     submission.compile().await?;
     debug!("running {submission_id}");
     let result = submission.run().await?;
-    debug!("finished running with result {result:?}");
+    debug!("finished running {} with result {}/{}", result.submission_id, result.score, result.full_score);
 
     Ok(result)
 }
