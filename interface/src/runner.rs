@@ -20,7 +20,7 @@ use tokio_postgres::{Connection, Socket};
 
 use super::SharedClient;
 
-use log::{debug, error, warn};
+use log::{debug, error, warn, info};
 
 pub struct JudgeState {
     result: Vec<GroupResult>,
@@ -138,6 +138,7 @@ pub async fn judge(
     submission.compile().await?;
     debug!("running {submission_id}");
     let result = submission.run().await?;
+    debug!("finished running with result {result:?}");
 
     Ok(result)
 }
@@ -169,7 +170,10 @@ pub async fn listen_new_submission<U>(
 
     let stream = stream.and_then(|msg| async {
         match msg {
-            tokio_postgres::AsyncMessage::Notification(msg) => Ok(msg.payload().to_string()),
+            tokio_postgres::AsyncMessage::Notification(msg) => {
+                info!("{msg:?}");
+                Ok(msg.payload().to_string())
+            },
             _ => panic!(),
         }
     });
@@ -233,6 +237,7 @@ async fn handle_update_message<T>(
                 }
             }
             SubmissionMessage::GroupResult(group_result) => {
+                log::info!("Group result");
                 if let Err(e) =
                     update_result(client.clone(), &submission_id, &state, group_result).await
                 {

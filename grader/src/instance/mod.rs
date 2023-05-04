@@ -66,7 +66,6 @@ impl Instance {
             "output",
             "--processes=128",
             "--cg",
-            "--cg-timing",
             format!("--cg-mem={}", self.memory_limit),
             format!("--dir={}", get_env("ALTERNATIVE_PATH")),
             "--run",
@@ -80,6 +79,8 @@ impl Instance {
         let mut result: InstanceResult = Default::default();
         let mut memory_limit_exceeded = false;
         for log_line in log_content.lines() {
+            let args: Vec<&str> = log_line.split(':').collect();
+            log::info!("{args:?}");
             let args: Vec<&str> = log_line.split(':').collect();
             if args.len() >= 2 {
                 match &*args[0] {
@@ -116,7 +117,7 @@ impl Instance {
                 .await?;
 
             if box_path.status.success() {
-                let box_path = String::from_utf8(box_path.stdout)?;
+                let box_path = dbg!(String::from_utf8(box_path.stdout)?);
                 self.box_path = PathBuf::from(box_path.trim_end_matches('\n')).join("box");
                 self.box_id = tmp_box_idx;
                 break;

@@ -104,32 +104,36 @@ async fn main() {
 
     info!("starting...");
 
-    loop {
-        let (tx, rx) = futures::channel::mpsc::unbounded::<SubmissionId>();
+    let (tx, rx) = futures::channel::mpsc::unbounded::<SubmissionId>();
 
-        let (client, connection) = connection::connect_db(&db_string).await;
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                error!("connection error: {}", e);
-            }
-        });
-        runner::clear_in_queue(client.clone(), tx.clone()).await;
+    let (client, connection) = connection::connect_db(&db_string).await;
+    let db_connection_handler = tokio::spawn(async move {
+        if let Err(e) = connection.await {
+            error!("connection error: {}", e);
+        }
+    });
+    runner::clear_in_queue(client.clone(), tx.clone()).await;
 
-        let db_notification_handler = handle_db_notification(&db_string, tx.clone()).await;
-        info!("start listening for database notification");
+    let db_notification_handler = handle_db_notification(&db_string, tx.clone()).await;
+    info!("start listening for database notification");
 
-        let submission_handler = handle_message(client.clone(), rx);
-        info!("start listening for submission through channel");
+    let submission_handler = handle_message(client.clone(), rx);
+    info!("start listening for submission through channel");
 
-        tokio::select! {
-            _ = submission_handler => {
-                warn!("submission handler died, restarting...");
-            },
-            _ = db_notification_handler => {
-                warn!("db notification handler died, restarting...");
-            },
-        };
-    }
+    tokio::select! {
+        _ = submission_handler => {
+            warn!("submission handler died, exiting...");
+            std::process::exit(1);
+        },
+        _ = db_notification_handler => {
+            warn!("db notification handler died, exiting...");
+            std::process::exit(1);
+        },
+        _ = db_connection_handler => {
+            warn!("db connection handler died, exiting...");
+            std::process::exit(1);
+        },
+    };
 }
 
 async fn handle_message<T>(client: SharedClient, mut reader: T)

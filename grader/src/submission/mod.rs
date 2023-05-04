@@ -181,7 +181,9 @@ impl<T> Submission<T> {
             args.push(&path);
         });
 
-        let compile_output = Command::new(compiler_path).args(args).output()?;
+        log::debug!("compiler path: {compiler_path:?} args: {args:?}");
+
+        let compile_output = dbg!(Command::new(compiler_path).args(args).output()?);
         let compile_output_args = String::from_utf8(compile_output.stdout.clone())?
             .lines()
             .map(|s| s.to_string())
@@ -256,6 +258,7 @@ impl<T> Submission<T> {
 
         // time!("instance init", instance.init().await?;);
         instance.init().await?;
+        
         // time!("instance run", let instance_result = instance.run().await?;);
         let instance_result = instance.run().await?;
 
@@ -269,7 +272,9 @@ impl<T> Submission<T> {
         run_result.status = match instance_result.status {
             RunVerdict::VerdictOK => {
                 let args = vec![&input_path, &output_path, &sol_path];
+                log::warn!("{input_path:?}, {output_path:?}, {sol_path:?}");
                 let checker_result = Command::new(&checker).args(args).output()?;
+                log::warn!("{checker_result:?}");
                 let checker_output = String::from_utf8(checker_result.stdout)?
                     .trim_end_matches('\n')
                     .lines()
