@@ -182,8 +182,8 @@ impl<T> Submission<T> {
         });
 
         log::debug!("compiler path: {compiler_path:?} args: {args:?}");
-
-        let compile_output = dbg!(Command::new(compiler_path).args(args).output()?);
+        let compile_output = Command::new(compiler_path).args(args).output()?;
+        log::debug!("compile output {compile_output:?}");
         let compile_output_args = String::from_utf8(compile_output.stdout.clone())?
             .lines()
             .map(|s| s.to_string())
