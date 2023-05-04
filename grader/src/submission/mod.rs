@@ -253,13 +253,12 @@ impl<T> Submission<T> {
             bin_path: self.bin_path.clone(),
             input_path: input_path.clone(),
             output_path: output_path.clone(),
-            runner_path: runner.to_path_buf()
+            runner_path: runner.to_path_buf(),
+            box_id: self.submission_id.clone().parse::<u64>().unwrap()
         };
 
-        // time!("instance init", instance.init().await?;);
         instance.init().await?;
         
-        // time!("instance run", let instance_result = instance.run().await?;);
         let instance_result = instance.run().await?;
 
         let mut run_result = RunResult::from(

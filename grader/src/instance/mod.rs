@@ -3,6 +3,7 @@ use crate::errors::{GraderError, GraderResult};
 use crate::utils::get_env;
 use std::path::PathBuf;
 use tokio::{fs, process::Command};
+use std::str::FromStr;
 
 #[cfg(test)]
 mod tests;
@@ -109,22 +110,20 @@ impl Instance {
     }
 
     pub async fn init(&mut self) -> GraderResult<()> {
-        for tmp_box_idx in 1..=1000 {
-            let box_path = Command::new(get_env("ISOLATE_PATH"))
-                .args(&["--init", "--cg", "-b"])
-                .arg(tmp_box_idx.to_string())
-                .output()
-                .await?;
-
-            if box_path.status.success() {
-                let box_path = dbg!(String::from_utf8(box_path.stdout)?);
-                self.box_path = PathBuf::from(box_path.trim_end_matches('\n')).join("box");
-                self.box_id = tmp_box_idx;
-                break;
-            }
-        }
-
         let tmp_path = get_env("TEMPORARY_PATH");
+
+        // <PathBuf as FromStr>::Error is Infalliable
+        let box_path = PathBuf::from_str(&tmp_path).unwrap().join(format!("{}", self.box_id));
+
+        let box_path = Command::new(get_env("ISOLATE_PATH"))
+            .args(&["--init", "--cg", "-b"])
+            .arg(format!("{}", self.box_id))
+            .output()
+            .await?;
+
+        let box_path = dbg!(String::from_utf8(box_path.stdout)?);
+        self.box_path = PathBuf::from(box_path.trim_end_matches('\n')).join("box");
+
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
         fs::copy(&self.input_path, &self.box_path.join("input")).await?;
