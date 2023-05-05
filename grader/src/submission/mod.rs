@@ -254,7 +254,7 @@ impl<T> Submission<T> {
             input_path: input_path.clone(),
             output_path: output_path.clone(),
             runner_path: runner.to_path_buf(),
-            box_id: self.submission_id.clone().parse::<u64>().unwrap()
+            box_id: self.submission_id.clone().parse::<u64>().unwrap() % 1000
         };
 
         instance.init().await?;
