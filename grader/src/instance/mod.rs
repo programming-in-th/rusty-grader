@@ -1,7 +1,8 @@
 use crate::combine_argument;
 use crate::errors::{GraderError, GraderResult};
 use crate::utils::get_env;
-use std::{fs, path::PathBuf, process::Command};
+use std::path::PathBuf;
+use tokio::{fs, process::Command};
 
 #[cfg(test)]
 mod tests;
@@ -65,7 +66,6 @@ impl Instance {
             "output",
             "--processes=128",
             "--cg",
-            "--cg-timing",
             format!("--cg-mem={}", self.memory_limit),
             format!("--dir={}", get_env("ALTERNATIVE_PATH")),
             "--run",
@@ -74,11 +74,13 @@ impl Instance {
         ])
     }
 
-    pub fn get_result(&self) -> GraderResult<InstanceResult> {
-        let log_content = fs::read_to_string(&self.log_file)?;
+    pub async fn get_result(&self) -> GraderResult<InstanceResult> {
+        let log_content = fs::read_to_string(&self.log_file).await?;
         let mut result: InstanceResult = Default::default();
         let mut memory_limit_exceeded = false;
         for log_line in log_content.lines() {
+            let args: Vec<&str> = log_line.split(':').collect();
+            log::info!("{args:?}");
             let args: Vec<&str> = log_line.split(':').collect();
             if args.len() >= 2 {
                 match &*args[0] {
@@ -106,25 +108,21 @@ impl Instance {
         Ok(result)
     }
 
-    pub fn init(&mut self) -> GraderResult<()> {
-        for tmp_box_idx in 1..=1000 {
-            let box_path = Command::new(get_env("ISOLATE_PATH"))
-                .args(&["--init", "--cg", "-b"])
-                .arg(tmp_box_idx.to_string())
-                .output()?;
-
-            if box_path.status.success() {
-                let box_path = String::from_utf8(box_path.stdout)?;
-                self.box_path = PathBuf::from(box_path.trim_end_matches('\n')).join("box");
-                self.box_id = tmp_box_idx;
-                break;
-            }
-        }
-
+    pub async fn init(&mut self) -> GraderResult<()> {
         let tmp_path = get_env("TEMPORARY_PATH");
+
+        let box_path = Command::new(get_env("ISOLATE_PATH"))
+            .args(&["--init", "--cg", "-b"])
+            .arg(format!("{}", self.box_id))
+            .output()
+            .await?;
+
+        let box_path = String::from_utf8(box_path.stdout)?;
+        self.box_path = PathBuf::from(box_path.trim_end_matches('\n')).join("box");
+
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
-        fs::copy(&self.input_path, &self.box_path.join("input"))?;
+        fs::copy(&self.input_path, &self.box_path.join("input")).await?;
 
         fs::copy(
             &self.bin_path,
@@ -133,19 +131,23 @@ impl Instance {
                     .file_name()
                     .ok_or(GraderError::invalid_to_str())?,
             ),
-        )?;
+        )
+        .await?;
 
-        fs::copy(&self.runner_path, &self.box_path.join("runner"))?;
+        fs::copy(&self.runner_path, &self.box_path.join("runner")).await?;
         Ok(())
     }
 
-    pub fn run(&self) -> GraderResult<InstanceResult> {
+    pub async fn run(&self) -> GraderResult<InstanceResult> {
         let args = self.get_run_arguments()?;
-        Command::new(get_env("ISOLATE_PATH")).args(args).output()?;
+        Command::new(get_env("ISOLATE_PATH"))
+            .args(args)
+            .output()
+            .await?;
 
-        let result = self.get_result()?;
+        let result = self.get_result().await?;
         if result.status == RunVerdict::VerdictOK {
-            fs::copy(&self.box_path.join("output"), &self.output_path)?;
+            fs::copy(&self.box_path.join("output"), &self.output_path).await?;
         }
         Ok(result)
     }
@@ -153,13 +155,14 @@ impl Instance {
 
 impl Drop for Instance {
     fn drop(&mut self) {
-        Command::new(get_env("ISOLATE_PATH"))
+        std::process::Command::new(get_env("ISOLATE_PATH"))
             .args(&["--cleanup", "--cg", "-b"])
             .arg(self.box_id.to_string())
-            .output().ok();
+            .output()
+            .ok();
 
         if self.log_file.is_file() {
-            fs::remove_file(&self.log_file).ok();
+            std::fs::remove_file(&self.log_file).ok();
         }
     }
 }
