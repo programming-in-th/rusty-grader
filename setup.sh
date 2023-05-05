@@ -14,7 +14,7 @@ git -C ${SCRIPTPATH} submodule update --init --recursive --depth 1
 
 echo "${green}Setting up compilers and dependencies${normal}"
 sudo apt-get update -y
-sudo apt-get install --no-install-recommends -y build-essential openjdk-17-jdk libcap-dev sysfsutils golang
+sudo apt-get install --no-install-recommends -y build-essential openjdk-17-jdk libcap-dev sysfsutils golang libsystemd-dev
 
 echo "${green}Setting up isolate...${green}"
 sudo sh -c "echo 0 > /proc/sys/kernel/randomize_va_space"
@@ -35,6 +35,9 @@ if ! grep -Fxq "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" /etc/sysfs
   sudo sh -c 'echo "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" >> /etc/sysfs.conf'
 fi
 
+sudo cp systemd/* /etc/systemd/system
+sudo systemctl daemon-reload
+sudo systemctl enable --now isolate.service
 sudo systemctl enable --now sysfsutils.service
 
 make -C ${SCRIPTPATH}/isolate isolate
