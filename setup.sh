@@ -35,7 +35,7 @@ if ! grep -Fxq "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" /etc/sysfs
   sudo sh -c 'echo "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" >> /etc/sysfs.conf'
 fi
 
-sudo cp systemd/* /etc/systemd/system
+sudo cp isolate/systemd/* /etc/systemd/system
 sudo systemctl daemon-reload
 sudo systemctl enable --now isolate.service
 sudo systemctl enable --now sysfsutils.service
