@@ -35,9 +35,6 @@ if ! grep -Fxq "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" /etc/sysfs
   sudo sh -c 'echo "kernel/mm/transparent_hugepage/khugepaged/defrag = 0" >> /etc/sysfs.conf'
 fi
 
-sudo cp isolate/systemd/* /etc/systemd/system
-sudo systemctl daemon-reload
-sudo systemctl enable --now isolate.service
 sudo systemctl enable --now sysfsutils.service
 
 make -C ${SCRIPTPATH}/isolate isolate
@@ -54,6 +51,9 @@ else
   sudo chmod 4777 /usr/local/bin/isolate
 fi
 
+sudo cp isolate/systemd/* /etc/systemd/system
+sudo systemctl daemon-reload
+sudo systemctl enable --now isolate.service
 
 echo "${green}Setting up .env${normal}"
 
