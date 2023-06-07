@@ -89,8 +89,8 @@ impl Manifest {
                             Ok((
                                 group["full_score"]
                                     .as_f64()
-                                    .ok_or(GraderError::invalid_value())?
-                                    as f64,
+                                    .or_else(|| group["full_score"].as_i64().map(|x| x as f64))
+                                    .ok_or(GraderError::invalid_value())?,
                                 group["tests"]
                                     .as_i64()
                                     .ok_or(GraderError::invalid_value())?
