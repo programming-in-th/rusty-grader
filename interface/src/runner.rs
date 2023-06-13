@@ -14,7 +14,6 @@ use grader::{
     },
 };
 use postgres_openssl::TlsStream;
-use serde_json;
 use tokio::sync::Mutex;
 use tokio_postgres::{Connection, Socket};
 
@@ -192,15 +191,12 @@ pub async fn listen_new_submission<U>(
         }
     }
 
-    match handle.await {
-        Err(e) => {
-            if e.is_cancelled() {
-                warn!("Listen new submission got cancelled");
-            } else if e.is_panic() {
-                warn!("Listen new submisison panic");
-            }
+    if let Err(e) = handle.await {
+        if e.is_cancelled() {
+            warn!("Listen new submission got cancelled");
+        } else if e.is_panic() {
+            warn!("Listen new submisison panic");
         }
-        Ok(_) => {}
     }
 }
 

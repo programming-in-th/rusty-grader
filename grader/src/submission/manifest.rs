@@ -29,7 +29,7 @@ impl Manifest {
             limit: yaml["limit"]
                 .as_hash()
                 .map(|limits| -> GraderResult<BTreeMap<String, (f64, u64)>> {
-                    Ok(limits
+                    limits
                         .iter()
                         .map(|(language, limit)| {
                             Ok((
@@ -48,7 +48,7 @@ impl Manifest {
                                 ),
                             ))
                         })
-                        .collect::<GraderResult<BTreeMap<_, _>>>()?)
+                        .collect::<GraderResult<BTreeMap<_, _>>>()
                 })
                 .transpose()?,
             compile_files: yaml["compile_files"]

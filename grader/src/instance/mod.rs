@@ -83,9 +83,9 @@ impl Instance {
             log::info!("{args:?}");
             let args: Vec<&str> = log_line.split(':').collect();
             if args.len() >= 2 {
-                match &*args[0] {
+                match args[0] {
                     "status" => {
-                        result.status = match &*args[1] {
+                        result.status = match args[1] {
                             "RE" => RunVerdict::VerdictRE,
                             "SG" => RunVerdict::VerdictSG,
                             "TO" => RunVerdict::VerdictTLE,
@@ -112,7 +112,7 @@ impl Instance {
         let tmp_path = get_env("TEMPORARY_PATH");
 
         let box_path = Command::new(get_env("ISOLATE_PATH"))
-            .args(&["--init", "--cg", "-b"])
+            .args(["--init", "--cg", "-b"])
             .arg(format!("{}", self.box_id))
             .output()
             .await?;
@@ -156,7 +156,7 @@ impl Instance {
 impl Drop for Instance {
     fn drop(&mut self) {
         std::process::Command::new(get_env("ISOLATE_PATH"))
-            .args(&["--cleanup", "--cg", "-b"])
+            .args(["--cleanup", "--cg", "-b"])
             .arg(self.box_id.to_string())
             .output()
             .ok();

@@ -1,4 +1,3 @@
-use brotli;
 use dotenv::dotenv;
 use futures::{Sink, Stream, StreamExt};
 use log::{debug, error, info, warn};
@@ -21,7 +20,7 @@ type SubmissionId = String;
 async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Error> {
     debug!("start judging {id}");
 
-    let lookup_id = String::from(id);
+    let lookup_id = id;
 
     let lookup_id_as_query_args = match lookup_id.parse::<i32>() {
         Ok(x) => x,
@@ -61,7 +60,7 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
         .collect::<Result<Vec<String>, Error>>()?;
 
     let val: i32 = 0;
-    let empty_data = serde_json::to_value(&(Vec::new() as Vec<i32>))?;
+    let empty_data = serde_json::to_value(Vec::new() as Vec<i32>)?;
     client
         .execute(
             "UPDATE submission SET \
@@ -83,10 +82,8 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
     match result {
         Ok(_) => Ok(()),
         Err(e) => {
-            if let Err(_) =
-                runner::update_status(client.clone(), &lookup_id, constants::ERROR_MSG.to_string())
-                    .await
-            {
+                if (runner::update_status(client.clone(), &lookup_id, constants::ERROR_MSG.to_string())
+                    .await).is_err() {
                 warn!("failed to update status to server");
             }
             Err(Error::GraderError(e))
@@ -143,9 +140,8 @@ where
     while let Some(id) = reader.next().await {
         let client = client.clone();
         tokio::spawn(async move {
-            match pull_and_judge(id.clone(), client).await {
-                Err(e) => warn!("failed to judge submission '{id}'\nreason: {e:?}"),
-                _ => {}
+            if let Err(e) = pull_and_judge(id.clone(), client).await {
+                warn!("failed to judge submission '{id}'\nreason: {e:?}");
             }
         });
     }

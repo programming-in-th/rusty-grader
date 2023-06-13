@@ -14,8 +14,9 @@ pub mod result;
 #[cfg(test)]
 mod tests;
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub enum SubmissionStatus {
+    #[default]
     Initialized,
     TaskNotFound,
     Compiling,
@@ -23,11 +24,6 @@ pub enum SubmissionStatus {
     CompilationError(String),
     Running(u64),
     Done(SubmissionResult),
-}
-impl Default for SubmissionStatus {
-    fn default() -> Self {
-        SubmissionStatus::Initialized
-    }
 }
 
 #[derive(Debug)]
@@ -109,7 +105,7 @@ impl<T> Submission<T> {
         let extension = get_code_extension(&language);
         let task_path = get_base_path().join("tasks").join(&task_id);
 
-        if task_path.is_dir() == false {
+        if !task_path.is_dir() {
             _ = message_handler
                 .send(SubmissionMessage::Status(SubmissionStatus::TaskNotFound))
                 .await;
@@ -163,7 +159,7 @@ impl<T> Submission<T> {
 
         let mut args = vec![&self.tmp_path];
         self.code_path.iter().for_each(|path| {
-            args.push(&path);
+            args.push(path);
         });
 
         let mut tmp_compile_files = vec![];
@@ -173,12 +169,12 @@ impl<T> Submission<T> {
                 .get(&self.language)
                 .ok_or(GraderError::invalid_index())?
             {
-                tmp_compile_files.push(self.tmp_path.join(&compile_file));
+                tmp_compile_files.push(self.tmp_path.join(compile_file));
             }
         }
 
         tmp_compile_files.iter().for_each(|path| {
-            args.push(&path);
+            args.push(path);
         });
 
         log::debug!("compiler path: {compiler_path:?} args: {args:?}");
@@ -272,7 +268,7 @@ impl<T> Submission<T> {
             RunVerdict::VerdictOK => {
                 let args = vec![&input_path, &output_path, &sol_path];
                 log::debug!("{input_path:?}, {output_path:?}, {sol_path:?}");
-                let checker_result = Command::new(&checker).args(args).output()?;
+                let checker_result = Command::new(checker).args(args).output()?;
                 log::debug!("{checker_result:?}\n");
                 let checker_output = String::from_utf8(checker_result.stdout)?
                     .trim_end_matches('\n')
@@ -333,7 +329,7 @@ impl<T> Submission<T> {
                     get_base_path()
                         .join("scripts")
                         .join("checker_scripts")
-                        .join(&file)
+                        .join(file)
                 });
         let grouper =
             self.task_manifest
@@ -343,7 +339,7 @@ impl<T> Submission<T> {
                     get_base_path()
                         .join("scripts")
                         .join("grouper_scripts")
-                        .join(&file)
+                        .join(file)
                 });
         let runner = get_base_path()
             .join("scripts")
