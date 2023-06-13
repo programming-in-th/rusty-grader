@@ -24,7 +24,9 @@ impl Manifest {
                 .ok_or(GraderError::invalid_value())?
                 .to_owned(),
             output_only: yaml["output_only"].as_bool().unwrap_or(false),
-            time_limit: yaml["time_limit"].as_f64().or_else(|| yaml["time_limit"].as_i64().map(|x| x as f64)),
+            time_limit: yaml["time_limit"]
+                .as_f64()
+                .or_else(|| yaml["time_limit"].as_i64().map(|x| x as f64)),
             memory_limit: yaml["memory_limit"].as_i64().map(|limit| limit as u64),
             limit: yaml["limit"]
                 .as_hash()

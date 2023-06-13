@@ -19,7 +19,7 @@ use tokio_postgres::{Connection, Socket};
 
 use super::SharedClient;
 
-use log::{debug, error, warn, info};
+use log::{debug, error, info, warn};
 
 const EPS: f64 = 1e-6;
 
@@ -139,7 +139,10 @@ pub async fn judge(
     submission.compile().await?;
     debug!("running {submission_id}");
     let result = submission.run().await?;
-    debug!("finished running {} with result {}/{}", result.submission_id, result.score, result.full_score);
+    debug!(
+        "finished running {} with result {}/{}",
+        result.submission_id, result.score, result.full_score
+    );
 
     Ok(result)
 }
@@ -174,7 +177,7 @@ pub async fn listen_new_submission<U>(
             tokio_postgres::AsyncMessage::Notification(msg) => {
                 info!("{msg:?}");
                 Ok(msg.payload().to_string())
-            },
+            }
             _ => panic!(),
         }
     });

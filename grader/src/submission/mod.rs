@@ -254,7 +254,7 @@ impl<T> Submission<T> {
         };
 
         instance.init().await?;
-        
+
         let instance_result = instance.run().await?;
 
         let mut run_result = RunResult::from(

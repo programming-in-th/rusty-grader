@@ -82,8 +82,10 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
     match result {
         Ok(_) => Ok(()),
         Err(e) => {
-                if (runner::update_status(client.clone(), &lookup_id, constants::ERROR_MSG.to_string())
-                    .await).is_err() {
+            if (runner::update_status(client.clone(), &lookup_id, constants::ERROR_MSG.to_string())
+                .await)
+                .is_err()
+            {
                 warn!("failed to update status to server");
             }
             Err(Error::GraderError(e))
