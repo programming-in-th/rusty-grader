@@ -14,7 +14,7 @@ git -C ${SCRIPTPATH} submodule update --init --recursive --depth 1
 
 echo "${green}Setting up compilers and dependencies${normal}"
 sudo apt-get update -y
-sudo apt-get install --no-install-recommends -y build-essential openjdk-17-jdk libcap-dev sysfsutils golang libsystemd-dev
+sudo apt-get install --no-install-recommends -y build-essential openjdk-17-jdk libcap-dev sysfsutils golang libsystemd-dev pkg-config libssl-dev
 
 echo "${green}Setting up isolate...${green}"
 sudo sh -c "echo 0 > /proc/sys/kernel/randomize_va_space"
