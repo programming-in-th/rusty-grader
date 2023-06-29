@@ -2,7 +2,7 @@ language:
   - id: "cpp"
     extension: "cpp"
   - id: "c"
-    extension: "c"
+    extension: "cpp"
   - id: "python"
     extension: "py"
   - id: "rust"
