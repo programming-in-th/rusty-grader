@@ -98,11 +98,9 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
-
     pretty_env_logger::init();
 
-    let db_string = env::var("DB_STRING").unwrap();
+    let db_string = env::var("DB_STRING").expect("environment variable `DB_STRING` is not provided");
 
     info!("starting...");
 
