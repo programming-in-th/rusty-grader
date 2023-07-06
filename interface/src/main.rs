@@ -1,4 +1,3 @@
-use dotenv::dotenv;
 use futures::{Sink, Stream, StreamExt};
 use log::{debug, error, info, warn};
 use serde_json::Value;
