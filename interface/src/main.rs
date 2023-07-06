@@ -7,9 +7,11 @@ use tokio::task::JoinHandle;
 
 use std::env;
 
+mod cfg;
 mod connection;
 mod constants;
 mod error;
+mod rmq;
 mod runner;
 
 use connection::SharedClient;
@@ -100,7 +102,16 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
 async fn main() {
     pretty_env_logger::init();
 
-    let db_string = env::var("DB_STRING").expect("environment variable `DB_STRING` is not provided");
+    let config = match cfg::read_config() {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Unable to read config file: {e}");
+            return;
+        }
+    };
+
+    let db_string =
+        env::var("DB_STRING").expect("environment variable `DB_STRING` is not provided");
 
     info!("starting...");
 
@@ -109,8 +120,13 @@ async fn main() {
     let (client, connection) = connection::connect_db(&db_string).await;
 
     let client = Arc::new(client);
+    let rmq_channel = Arc::new(
+        rmq::get_channel(&config.rmq_config)
+            .await
+            .expect("Unable to create rabbitmq channel"),
+    );
 
-    let shared_client = SharedClient::new(client);
+    let shared_client = SharedClient::new(client, rmq_channel, &config.rmq_config);
 
     let db_connection_handler = tokio::spawn(async move {
         if let Err(e) = connection.await {
@@ -161,7 +177,7 @@ where
     <T as Sink<SubmissionId>>::Error: std::fmt::Debug + Send + Sync + 'static,
 {
     let (listen_client, listen_connection) = connection::connect_db(&db_string.to_string()).await;
-    let listen_client = SharedClient::new(Arc::new(listen_client));
+    let listen_client = Arc::new(listen_client);
     let listen = runner::listen_new_submission(listen_client, listen_connection, tx);
     tokio::spawn(listen)
 }
