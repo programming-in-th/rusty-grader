@@ -1,6 +1,5 @@
 use crate::{
     constants::{parse_submission_status, PULL_MSG},
-    error::Error,
     SubmissionId,
 };
 use futures::TryStreamExt;
@@ -21,83 +20,11 @@ use super::SharedClient;
 
 use log::{debug, error, info, warn};
 
-const EPS: f64 = 1e-6;
-
 pub struct JudgeState {
-    result: Vec<GroupResult>,
-    score: f64,
-    time: i32,
-    memory: i32,
-}
-
-pub async fn update_status(
-    client: SharedClient,
-    submission_id: &str,
-    msg: String,
-) -> Result<(), Error> {
-    debug!("change {submission_id}'s status to {msg}");
-    client
-        .execute(
-            "UPDATE submission SET status = $1 WHERE id = $2",
-            &[&msg, &submission_id.parse::<i32>().unwrap()],
-        )
-        .await?;
-
-    Ok(())
-}
-
-pub async fn update_result(
-    client: SharedClient,
-    submission_id: &str,
-    state: &Mutex<JudgeState>,
-    group: GroupResult,
-) -> Result<(), Error> {
-    debug!("received new group result for {submission_id}");
-    let new_score = group.score;
-    let new_time = group
-        .run_result
-        .iter()
-        .map(|r| (r.time_usage * 1000.0) as i32)
-        .max()
-        .unwrap_or(0);
-    let new_memory = group
-        .run_result
-        .iter()
-        .map(|r| r.memory_usage)
-        .max()
-        .unwrap_or(0) as i32;
-
-    let mut lock = state.lock().await;
-
-    lock.score += new_score;
-    lock.time = std::cmp::max(lock.time, new_time);
-    lock.memory = std::cmp::max(lock.memory, new_memory);
-    lock.result.push(group);
-
-    let score = lock.score + EPS;
-    let time = lock.time;
-    let memory = lock.memory;
-
-    let data = serde_json::to_value(&lock.result).unwrap();
-    drop(lock);
-
-    debug!("update {submission_id} to (score: {score}, time: {time}, memory: {memory})");
-    client
-        .execute(
-            "UPDATE submission SET \
-                        groups = $1, score = $2, time = $3, \
-                        memory = $4 WHERE id = $5",
-            &[
-                &data,
-                &(score as i32),
-                &time,
-                &memory,
-                &submission_id.parse::<i32>().unwrap(),
-            ],
-        )
-        .await?;
-
-    Ok(())
+    pub result: Vec<GroupResult>,
+    pub score: f64,
+    pub time: i32,
+    pub memory: i32,
 }
 
 pub async fn judge(
@@ -215,8 +142,7 @@ async fn handle_update_message<T>(
     while let Some(message) = rx.next().await {
         match message {
             SubmissionMessage::Status(status @ SubmissionStatus::Done(..)) => {
-                if let Err(e) = update_status(
-                    client.clone(),
+                if let Err(e) = client.update_status(
                     &submission_id,
                     parse_submission_status(status),
                 )
@@ -227,8 +153,7 @@ async fn handle_update_message<T>(
                 break;
             }
             SubmissionMessage::Status(status) => {
-                if let Err(e) = update_status(
-                    client.clone(),
+                if let Err(e) = client.update_status(
                     &submission_id,
                     parse_submission_status(status),
                 )
@@ -240,7 +165,7 @@ async fn handle_update_message<T>(
             SubmissionMessage::GroupResult(group_result) => {
                 log::info!("Group result");
                 if let Err(e) =
-                    update_result(client.clone(), &submission_id, &state, group_result).await
+                    client.update_result(&submission_id, &state, group_result).await
                 {
                     warn!("ubable to update status to database: {e}");
                 }
