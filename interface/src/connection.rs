@@ -7,7 +7,7 @@ use postgres_openssl::{MakeTlsConnector, TlsStream};
 use tokio::sync::Mutex;
 use tokio_postgres::{Client, Connection, Socket};
 
-use crate::{cfg::RabbitMqConfig, error::Error, runner::JudgeState};
+use crate::{cfg::{RabbitMqConfig, DatabaseConfig}, error::Error, runner::JudgeState};
 use log::*;
 
 const EPS: f64 = 1e-6;
@@ -161,7 +161,16 @@ impl SharedClient {
     }
 }
 
-pub async fn connect_db(db_string: &str) -> (Client, Connection<Socket, TlsStream<Socket>>) {
+pub async fn connect_db(db_config: &DatabaseConfig) -> (Client, Connection<Socket, TlsStream<Socket>>) {
+    let addr = format!(
+        "postgres://{username}:{password}@{host}:{port}/{dbname}",
+        username = db_config.username,
+        password = db_config.password,
+        host = db_config.host,
+        port = db_config.port,
+        dbname = db_config.name,
+    );
+
     let builder = SslConnector::builder(SslMethod::tls()).unwrap();
     let mut connector = MakeTlsConnector::new(builder.build());
     connector.set_callback(|config, _| {
@@ -169,7 +178,7 @@ pub async fn connect_db(db_string: &str) -> (Client, Connection<Socket, TlsStrea
         Ok(())
     });
 
-    let (client, connection) = tokio_postgres::connect(db_string, connector).await.unwrap();
+    let (client, connection) = tokio_postgres::connect(&addr, connector).await.unwrap();
 
     (client, connection)
 }
