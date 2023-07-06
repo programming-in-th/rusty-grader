@@ -114,12 +114,9 @@ pub async fn listen_new_submission<U>(
 
     let handle = tokio::spawn(stream);
 
-    match client.db_client.batch_execute("LISTEN submit;").await {
-        Ok(_) => {}
-        Err(_) => {
-            error!("Unable to listen to database");
-            panic!("Unable to listen to database");
-        }
+    if client.db_client.batch_execute("LISTEN submit;").await.is_err() {
+        error!("Unable to listen to database");
+        panic!("Unable to listen to database");
     }
 
     if let Err(e) = handle.await {
@@ -165,7 +162,7 @@ async fn handle_update_message<T>(
                     .update_result(&submission_id, &state, group_result)
                     .await
                 {
-                    warn!("ubable to update status to database: {e}");
+                    warn!("unable to update status to database: {e}");
                 }
             }
             _ => {}
