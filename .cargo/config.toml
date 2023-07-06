@@ -11,3 +11,8 @@ RABBITMQ_USERNAME = "user"
 RABBITMQ_PASSWORD = "password"
 RABBITMQ_ENV = "prod"
 RUST_LOG = "debug"
+
+ISOLATE_PATH="/usr/local/bin/isolate"
+ALTERNATIVE_PATH="/etc/alternatives"
+TEMPORARY_PATH="/tmp"
+BASE_PATH="./example"
