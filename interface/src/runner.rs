@@ -76,6 +76,7 @@ pub async fn judge(
 
 pub async fn clear_in_queue(client: SharedClient, tx: UnboundedSender<SubmissionId>) {
     let rows = client
+        .db_client
         .query("SELECT id FROM submission WHERE status = $1", &[&PULL_MSG])
         .await
         .unwrap();
@@ -113,7 +114,7 @@ pub async fn listen_new_submission<U>(
 
     let handle = tokio::spawn(stream);
 
-    match client.batch_execute("LISTEN submit;").await {
+    match client.db_client.batch_execute("LISTEN submit;").await {
         Ok(_) => {}
         Err(_) => {
             error!("Unable to listen to database");
@@ -142,30 +143,27 @@ async fn handle_update_message<T>(
     while let Some(message) = rx.next().await {
         match message {
             SubmissionMessage::Status(status @ SubmissionStatus::Done(..)) => {
-                if let Err(e) = client.update_status(
-                    &submission_id,
-                    parse_submission_status(status),
-                )
-                .await
+                if let Err(e) = client
+                    .update_status(&submission_id, parse_submission_status(status))
+                    .await
                 {
                     warn!("unable to update status to database: {e}");
                 }
                 break;
             }
             SubmissionMessage::Status(status) => {
-                if let Err(e) = client.update_status(
-                    &submission_id,
-                    parse_submission_status(status),
-                )
-                .await
+                if let Err(e) = client
+                    .update_status(&submission_id, parse_submission_status(status))
+                    .await
                 {
                     warn!("unable to update status to database: {e}");
                 }
             }
             SubmissionMessage::GroupResult(group_result) => {
                 log::info!("Group result");
-                if let Err(e) =
-                    client.update_result(&submission_id, &state, group_result).await
+                if let Err(e) = client
+                    .update_result(&submission_id, &state, group_result)
+                    .await
                 {
                     warn!("ubable to update status to database: {e}");
                 }
