@@ -13,6 +13,7 @@ pub struct DatabaseConfig {
     pub port: i32,
     pub username: String,
     pub password: String,
+    pub name: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]

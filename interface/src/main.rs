@@ -1,11 +1,8 @@
-use dotenv::dotenv;
+use cfg::DatabaseConfig;
 use futures::{Sink, Stream, StreamExt};
-use log::{debug, error, info, warn};
 use serde_json::Value;
 use std::{io::Cursor, sync::Arc};
 use tokio::task::JoinHandle;
-
-use std::env;
 
 mod cfg;
 mod connection;
@@ -20,7 +17,7 @@ use error::Error;
 type SubmissionId = String;
 
 async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Error> {
-    debug!("start judging {id}");
+    log::debug!("start judging {id}");
 
     let lookup_id = id;
 
@@ -81,7 +78,7 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
         )
         .await?;
 
-    debug!("start judging submission {lookup_id}");
+    log::debug!("start judging submission {lookup_id}");
     let result = runner::judge(task_id, &lookup_id, language, &code, client.clone()).await;
     match result {
         Ok(_) => Ok(()),
@@ -91,7 +88,7 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
                 .await)
                 .is_err()
             {
-                warn!("failed to update status to server");
+                log::warn!("failed to update status to server");
             }
             Err(Error::GraderError(e))
         }
@@ -105,19 +102,16 @@ async fn main() {
     let config = match cfg::read_config() {
         Ok(x) => x,
         Err(e) => {
-            error!("Unable to read config file: {e}");
+            log::error!("Unable to read config file: {e}");
             return;
         }
     };
 
-    let db_string =
-        env::var("DB_STRING").expect("environment variable `DB_STRING` is not provided");
-
-    info!("starting...");
+    log::info!("starting...");
 
     let (tx, rx) = futures::channel::mpsc::unbounded::<SubmissionId>();
 
-    let (client, connection) = connection::connect_db(&db_string).await;
+    let (client, connection) = connection::connect_db(&config.database_config).await;
 
     let client = Arc::new(client);
     let rmq_channel = Arc::new(
@@ -130,28 +124,28 @@ async fn main() {
 
     let db_connection_handler = tokio::spawn(async move {
         if let Err(e) = connection.await {
-            error!("connection error: {}", e);
+            log::error!("connection error: {}", e);
         }
     });
     runner::clear_in_queue(shared_client.clone(), tx.clone()).await;
 
-    let db_notification_handler = handle_db_notification(&db_string, tx.clone()).await;
-    info!("start listening for database notification");
+    let db_notification_handler = handle_db_notification(&config.database_config, tx.clone()).await;
+    log::info!("start listening for database notification");
 
     let submission_handler = handle_message(shared_client.clone(), rx);
-    info!("start listening for submission through channel");
+    log::info!("start listening for submission through channel");
 
     tokio::select! {
         _ = submission_handler => {
-            warn!("submission handler died, exiting...");
+            log::warn!("submission handler died, exiting...");
             std::process::exit(1);
         },
         _ = db_notification_handler => {
-            warn!("db notification handler died, exiting...");
+            log::warn!("db notification handler died, exiting...");
             std::process::exit(1);
         },
         _ = db_connection_handler => {
-            warn!("db connection handler died, exiting...");
+            log::warn!("db connection handler died, exiting...");
             std::process::exit(1);
         },
     };
@@ -165,18 +159,18 @@ where
         let client = client.clone();
         tokio::spawn(async move {
             if let Err(e) = pull_and_judge(id.clone(), client).await {
-                warn!("failed to judge submission '{id}'\nreason: {e:?}");
+                log::warn!("failed to judge submission '{id}'\nreason: {e:?}");
             }
         });
     }
 }
 
-async fn handle_db_notification<T>(db_string: impl ToString, tx: T) -> JoinHandle<()>
+async fn handle_db_notification<T>(db_config: &DatabaseConfig, tx: T) -> JoinHandle<()>
 where
     T: Sink<SubmissionId> + Send + Sync + 'static,
     <T as Sink<SubmissionId>>::Error: std::fmt::Debug + Send + Sync + 'static,
 {
-    let (listen_client, listen_connection) = connection::connect_db(&db_string.to_string()).await;
+    let (listen_client, listen_connection) = connection::connect_db(db_config).await;
     let listen_client = Arc::new(listen_client);
     let listen = runner::listen_new_submission(listen_client, listen_connection, tx);
     tokio::spawn(listen)
