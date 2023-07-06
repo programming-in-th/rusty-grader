@@ -2,7 +2,7 @@ use dotenv::dotenv;
 use futures::{Sink, Stream, StreamExt};
 use log::{debug, error, info, warn};
 use serde_json::Value;
-use std::io::Cursor;
+use std::{io::Cursor, sync::Arc};
 use tokio::task::JoinHandle;
 
 use std::env;
@@ -28,6 +28,7 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
     };
 
     let rows = client
+        .db_client
         .query(
             "SELECT task_id, language, \
             code, status  FROM submission WHERE id = $1",
@@ -62,6 +63,7 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
     let val: i32 = 0;
     let empty_data = serde_json::to_value(Vec::new() as Vec<i32>)?;
     client
+        .db_client
         .execute(
             "UPDATE submission SET \
             groups = $1, score = $2, time = $3, \
@@ -82,7 +84,8 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
     match result {
         Ok(_) => Ok(()),
         Err(e) => {
-            if (runner::update_status(client.clone(), &lookup_id, constants::ERROR_MSG.to_string())
+            if (client
+                .update_status(&lookup_id, constants::ERROR_MSG.to_string())
                 .await)
                 .is_err()
             {
@@ -95,28 +98,31 @@ async fn pull_and_judge(id: SubmissionId, client: SharedClient) -> Result<(), Er
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
-
     pretty_env_logger::init();
 
-    let db_string = env::var("DB_STRING").unwrap();
+    let db_string = env::var("DB_STRING").expect("environment variable `DB_STRING` is not provided");
 
     info!("starting...");
 
     let (tx, rx) = futures::channel::mpsc::unbounded::<SubmissionId>();
 
     let (client, connection) = connection::connect_db(&db_string).await;
+
+    let client = Arc::new(client);
+
+    let shared_client = SharedClient::new(client);
+
     let db_connection_handler = tokio::spawn(async move {
         if let Err(e) = connection.await {
             error!("connection error: {}", e);
         }
     });
-    runner::clear_in_queue(client.clone(), tx.clone()).await;
+    runner::clear_in_queue(shared_client.clone(), tx.clone()).await;
 
     let db_notification_handler = handle_db_notification(&db_string, tx.clone()).await;
     info!("start listening for database notification");
 
-    let submission_handler = handle_message(client.clone(), rx);
+    let submission_handler = handle_message(shared_client.clone(), rx);
     info!("start listening for submission through channel");
 
     tokio::select! {
@@ -155,6 +161,7 @@ where
     <T as Sink<SubmissionId>>::Error: std::fmt::Debug + Send + Sync + 'static,
 {
     let (listen_client, listen_connection) = connection::connect_db(&db_string.to_string()).await;
+    let listen_client = SharedClient::new(Arc::new(listen_client));
     let listen = runner::listen_new_submission(listen_client, listen_connection, tx);
     tokio::spawn(listen)
 }
