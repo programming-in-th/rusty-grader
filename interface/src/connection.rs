@@ -88,7 +88,7 @@ impl SharedClient {
             .await?;
 
         let id: i32 = row.get(0);
-        let groups: String = row.get(1);
+        let groups: serde_json::Value = row.get(1);
         let status: String = row.get(2);
         let score: i32 = row.get(3);
 
@@ -129,7 +129,7 @@ impl SharedClient {
             .await?;
 
         let id: i32 = row.get(0);
-        let groups: String = row.get(1);
+        let groups: serde_json::Value = row.get(1);
         let status: String = row.get(2);
         let score: i32 = row.get(3);
 
