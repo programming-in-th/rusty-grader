@@ -1,12 +1,13 @@
 use std::sync::Arc;
 
 use grader::submission::result::GroupResult;
+use lapin::{options::BasicPublishOptions, BasicProperties, Channel};
 use openssl::ssl::{SslConnector, SslMethod};
 use postgres_openssl::{MakeTlsConnector, TlsStream};
 use tokio::sync::Mutex;
 use tokio_postgres::{Client, Connection, Socket};
 
-use crate::{error::Error, runner::JudgeState};
+use crate::{cfg::{RabbitMqConfig, DatabaseConfig}, error::Error, runner::JudgeState};
 use log::*;
 
 const EPS: f64 = 1e-6;
@@ -14,11 +15,23 @@ const EPS: f64 = 1e-6;
 #[derive(Clone)]
 pub struct SharedClient {
     pub db_client: Arc<Client>,
+    pub rmq_channel: Arc<Channel>,
+    update_routing_key: String,
 }
 
 impl SharedClient {
-    pub fn new(db_client: Arc<Client>) -> Self {
-        Self { db_client }
+    pub fn new(
+        db_client: Arc<Client>,
+        rmq_channel: Arc<Channel>,
+        rmq_config: &RabbitMqConfig,
+    ) -> Self {
+        let update_routing_key = format!("submission.update.{}", rmq_config.env);
+
+        Self {
+            db_client,
+            rmq_channel,
+            update_routing_key,
+        }
     }
 
     pub async fn update_result(
@@ -57,11 +70,13 @@ impl SharedClient {
         drop(lock);
 
         debug!("update {submission_id} to (score: {score}, time: {time}, memory: {memory})");
-        self.db_client
-            .execute(
+        let row = self
+            .db_client
+            .query_one(
                 "UPDATE submission SET \
                             groups = $1, score = $2, time = $3, \
-                            memory = $4 WHERE id = $5",
+                            memory = $4 WHERE id = $5 \
+                            RETURNING id, groups, status, score",
                 &[
                     &data,
                     &(score as i32),
@@ -72,23 +87,90 @@ impl SharedClient {
             )
             .await?;
 
+        let id: i32 = row.get(0);
+        let groups: serde_json::Value = row.get(1);
+        let status: String = row.get(2);
+        let score: i32 = row.get(3);
+
+        let payload = serde_json::json!({
+            "id": id,
+            "groups": groups,
+            "status": status,
+            "score": score,
+        })
+        .to_string();
+
+        let payload = payload.as_bytes();
+
+        if let Err(e) = self
+            .rmq_channel
+            .basic_publish(
+                "",
+                &self.update_routing_key,
+                BasicPublishOptions::default(),
+                payload,
+                BasicProperties::default(),
+            )
+            .await
+        {
+            log::error!("Unable to publish message: {e}");
+        }
+
         Ok(())
     }
 
     pub async fn update_status(&self, submission_id: &str, msg: String) -> Result<(), Error> {
         debug!("change {submission_id}'s status to {msg}");
-        self.db_client
-            .execute(
-                "UPDATE submission SET status = $1 WHERE id = $2",
+        let row = self.db_client
+            .query_one(
+                "UPDATE submission SET status = $1 WHERE id = $2 RETURNING id, groups, status, score",
                 &[&msg, &submission_id.parse::<i32>().unwrap()],
             )
             .await?;
+
+        let id: i32 = row.get(0);
+        let groups: serde_json::Value = row.get(1);
+        let status: String = row.get(2);
+        let score: i32 = row.get(3);
+
+        let payload = serde_json::json!({
+            "id": id,
+            "groups": groups,
+            "status": status,
+            "score": score,
+        })
+        .to_string();
+
+        let payload = payload.as_bytes();
+
+        if let Err(e) = self
+            .rmq_channel
+            .basic_publish(
+                "",
+                &self.update_routing_key,
+                BasicPublishOptions::default(),
+                payload,
+                BasicProperties::default(),
+            )
+            .await
+        {
+            log::error!("Unable to publish message: {e}");
+        }
 
         Ok(())
     }
 }
 
-pub async fn connect_db(db_string: &str) -> (Client, Connection<Socket, TlsStream<Socket>>) {
+pub async fn connect_db(db_config: &DatabaseConfig) -> (Client, Connection<Socket, TlsStream<Socket>>) {
+    let addr = format!(
+        "postgres://{username}:{password}@{host}:{port}/{dbname}",
+        username = db_config.username,
+        password = db_config.password,
+        host = db_config.host,
+        port = db_config.port,
+        dbname = db_config.name,
+    );
+
     let builder = SslConnector::builder(SslMethod::tls()).unwrap();
     let mut connector = MakeTlsConnector::new(builder.build());
     connector.set_callback(|config, _| {
@@ -96,7 +178,7 @@ pub async fn connect_db(db_string: &str) -> (Client, Connection<Socket, TlsStrea
         Ok(())
     });
 
-    let (client, connection) = tokio_postgres::connect(db_string, connector).await.unwrap();
+    let (client, connection) = tokio_postgres::connect(&addr, connector).await.unwrap();
 
     (client, connection)
 }
