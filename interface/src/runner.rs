@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     constants::{parse_submission_status, PULL_MSG},
     SubmissionId,
@@ -14,7 +16,7 @@ use grader::{
 };
 use postgres_openssl::TlsStream;
 use tokio::sync::Mutex;
-use tokio_postgres::{Connection, Socket};
+use tokio_postgres::{Client, Connection, Socket};
 
 use super::SharedClient;
 
@@ -89,7 +91,7 @@ pub async fn clear_in_queue(client: SharedClient, tx: UnboundedSender<Submission
 }
 
 pub async fn listen_new_submission<U>(
-    client: SharedClient,
+    client: Arc<Client>,
     mut connection: Connection<Socket, TlsStream<Socket>>,
     writer: U,
 ) where
@@ -114,7 +116,7 @@ pub async fn listen_new_submission<U>(
 
     let handle = tokio::spawn(stream);
 
-    if client.db_client.batch_execute("LISTEN submit;").await.is_err() {
+    if client.batch_execute("LISTEN submit;").await.is_err() {
         error!("Unable to listen to database");
         panic!("Unable to listen to database");
     }
