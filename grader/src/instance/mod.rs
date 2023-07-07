@@ -3,6 +3,7 @@ use crate::errors::{GraderError, GraderResult};
 use crate::utils::get_env;
 use std::path::PathBuf;
 use tokio::{fs, process::Command};
+use anyhow::Context;
 
 #[cfg(test)]
 mod tests;
@@ -52,7 +53,8 @@ impl Instance {
             "-M",
             self.log_file
                 .to_str()
-                .ok_or(GraderError::invalid_to_str())?
+                .ok_or(GraderError::invalid_to_str())
+                .with_context(|| "Unable to convert OsStr to str")?
                 .to_string(),
             "-t",
             self.time_limit.to_string(),
@@ -122,19 +124,29 @@ impl Instance {
 
         self.log_file = PathBuf::from(tmp_path).join(format!("tmp_log_{}.txt", self.box_id));
 
-        fs::copy(&self.input_path, &self.box_path.join("input")).await?;
+        let from = self.box_path.as_path();
+        let to = self.log_file.as_path();
+
+        fs::copy(&self.input_path, &self.box_path.join("input")).await.with_context(|| format!("Copy from {from:?} to {to:?}"))?;
+
+        let from = self.bin_path.as_path();
+        let to = self.box_path.join(
+            self.bin_path
+                .file_name()
+                .ok_or(GraderError::invalid_to_str())
+                .with_context(|| "Cannot convert OsStr to str")?,
+        );
 
         fs::copy(
-            &self.bin_path,
-            &self.box_path.join(
-                self.bin_path
-                    .file_name()
-                    .ok_or(GraderError::invalid_to_str())?,
-            ),
+            from,
+            to.as_path(),
         )
-        .await?;
+        .await
+        .with_context(|| format!("Copy from {from:?} to {to:?}"))?;
 
-        fs::copy(&self.runner_path, &self.box_path.join("runner")).await?;
+        let from = self.runner_path.as_path();
+        let to = self.box_path.join("runner");
+        fs::copy(from, to.as_path()).await.with_context(|| "Copy from {from:?} to {to:?}")?;
         Ok(())
     }
 
@@ -147,7 +159,10 @@ impl Instance {
 
         let result = self.get_result().await?;
         if result.status == RunVerdict::VerdictOK {
-            fs::copy(&self.box_path.join("output"), &self.output_path).await?;
+            let from = self.box_path.join("output");
+            let to = self.output_path.as_path();
+
+            fs::copy(from, to).await.with_context(|| "Copy from {from:?} to {to:?}")?;
         }
         Ok(result)
     }
