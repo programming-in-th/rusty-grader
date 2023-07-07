@@ -43,6 +43,10 @@ pub enum GraderError {
         #[cfg(feature = "backtraces")]
         backtrace: Backtrace,
     },
+    #[error("Unkown: {msg}")]
+    Unknown {
+        msg: String,
+    }
 }
 impl GraderError {
     pub fn invalid_utf8(msg: impl ToString) -> Self {
@@ -119,6 +123,15 @@ impl From<std::num::ParseIntError> for GraderError {
 impl From<std::num::ParseFloatError> for GraderError {
     fn from(source: std::num::ParseFloatError) -> Self {
         Self::parse_err("float", source)
+    }
+}
+
+impl From<anyhow::Error> for GraderError {
+    fn from(value: anyhow::Error) -> Self {
+        match value.downcast() {
+            Ok(x) => x,
+            Err(e) => GraderError::Unknown { msg: e.to_string() }
+        }
     }
 }
 
