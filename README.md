@@ -3,9 +3,9 @@
 
 ## Checker
 
-To utilize the custom checker, please ensure that the manifest.yaml file does not include the checker attribute.
+To utilize the custom checker, please ensure that the `manifest.yaml` file does not include the checker attribute.
 
-The custom checker, which should be named checker, must be stored in the main directory of the task.
+The custom checker, which should be named `checker`, must be stored in the main directory of the task.
 
 The checker script must be provided by the user and takes in the following command-line arguments:
 
@@ -63,17 +63,20 @@ If you intend to utilize C++ code without the need for compilation, you can inco
 
 FILENAME="checker.cpp"
 
-OUTPUT="output"
+BINNAME="output"
 
 DIR="$( cd "$( dirname "$0" )" && pwd )"
 
-CHECKER="${DIR}/${OUTPUT}"
+CHECKER="${DIR}/${BINNAME}"
 
-if ! test -f "${CHECKER}"; then
-    ( cd "${DIR}" && g++ -std=c++11 -O2 -Wall -Wextra -pedantic -o "${OUTPUT}" "${FILENAME}")
+LAST_CHECKER="$(stat -c%Y ${DIR}/${FILENAME})"
+LAST_BIN="$(stat -c%Y ${CHECKER} 2> /dev/null)"
+
+if [[ ! -f "${CHECKER}" ]] || [[ $LAST_CHECKER -ge $LAST_BIN ]]; then
+    ( cd "${DIR}" && g++ -std=c++11 -O2 -Wall -Wextra -pedantic -o "${BINNAME}" "${FILENAME}")
 fi
 
-( cd "${DIR}" && "./${OUTPUT}" $1 $2 $3 )
+( cd "${DIR}" && "./${BINNAME}" $1 $2 $3 )
 ```
 
 Additionally, remember to place the `checker.cpp` file inside the main directory of the task.
@@ -84,10 +87,10 @@ Default checkers are provided with the grader that can easily be used by specify
 
 Each default checker will split output into tokens as follows:
 
-- ncmp: single or more 64-bit integers, ignores whitespaces
-- wcmp: sequence of tokens
-- nyesno: single or more yes/no tokens, case insensitive
-- lcmp: lines, ignores whitespaces
-- fcmp: lines, doesn't ignore whitespaces
-- rcmp6: single or more floating point numbers, maximum error $10^{-6}$
-- rcmp9: single or more floating point numbers, maximum error $10^{-9}$
+- `ncmp`: single or more 64-bit integers, ignores whitespaces
+- `wcmp`: sequence of tokens
+- `nyesno`: single or more yes/no tokens, case insensitive
+- `lcmp`: lines, ignores whitespaces
+- `fcmp`: lines, doesn't ignore whitespaces
+- `rcmp6`: single or more floating point numbers, maximum error $10^{-6}$
+- `rcmp9`: single or more floating point numbers, maximum error $10^{-9}$
