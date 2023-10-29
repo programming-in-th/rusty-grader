@@ -9,7 +9,7 @@ on:
       - "v*"
 
 env:
-  ARTIFACT_NAME: rusty-grader-${{ github.ref_name }}
+  ARTIFACT_NAME: rusty-grader-${{ github.ref_name }}.tar.gz
 
 jobs:
   build:
