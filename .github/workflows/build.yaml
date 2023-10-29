@@ -30,7 +30,7 @@ jobs:
           path: rusty-grader
 
       - name: Prepare tarball for release
-        if: startsWith(github.ref, 'resf/tag/')
+        if: startsWith(github.ref, 'refs/tag/')
         run: tar zcvf $ARTIFACT_NAME rusty-grader
 
       - name: Release
