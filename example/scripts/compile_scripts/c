@@ -10,8 +10,8 @@ for i in range(2, len(sys.argv)):
 
 output_path = os.path.join(base_dir, "bin")
 cmd = [
-    "/usr/bin/gcc", "--std=c11", "-O2", "-lm", "-static", "-DEVAL",
-    *compile_files, "-o", output_path
+    "/usr/bin/gcc", "--std=c11", "-O2", "-static", "-DEVAL",
+    *compile_files, "-lm", "-o", output_path
 ]
 
 capture = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
